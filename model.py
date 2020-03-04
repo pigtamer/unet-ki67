@@ -7,6 +7,7 @@ import numpy as np
 from keras.losses import binary_crossentropy
 from keras.utils import multi_gpu_model
 from utils import *
+from keras import losses
 
 from keras.models import *
 from keras.layers import *
@@ -17,8 +18,21 @@ from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras import backend as K
 
 import segmentation_models as sm
+from segmodel import *
 
-def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=False):
+loss_dict = {
+    "bceja": sm.losses.bce_jaccard_loss,
+    "ja": sm.losses.jaccard_loss,
+    "focal": focal_loss,
+    "bce":sm.losses.binary_crossentropy,
+    "focalja": sm.losses.binary_focal_jaccard_loss,
+    "dice": sm.losses.dice_loss,
+    "bcedice": sm.losses.bce_dice_loss,
+    "l1": losses.mean_absolute_percentage_error,
+    "l2": losses.mean_squared_error
+}
+
+def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=False, loss="l1"):
     # 所有等号左侧其实不是层而是张量吗...
     # 是的！ 因为这里使用了keras的函数式API。每一个层都是可以调用的...而在左边返回输出的张量
     inputs = Input(input_size)
@@ -105,15 +119,20 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
         with strategy.scope():
             model = multi_gpu_model(model, gpus=2)
             model.compile(optimizer=Adam(lr=lr),
-                          loss=sm.losses.bce_jaccard_loss, metrics=[sm.metrics.iou_score, 'accuracy'])
+                          loss=sm.losses.binary_focal_jaccard_loss, metrics=[sm.metrics.iou_score, 'accuracy'])
     else:
         model.compile(optimizer=Adam(lr=lr),
-                      loss=sm.losses.bce_jaccard_loss, metrics=[sm.metrics.iou_score, 'accuracy'])
+                      loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
 
     # model.summary()
-
     if pretrained_weights:
         model.load_weights(pretrained_weights)
 
     return model
 
+model_dict = {
+    "unet": unet,
+    "unetxx": unetxx,
+    "unet++": unetxx,
+    "denseunet": denseunet
+}

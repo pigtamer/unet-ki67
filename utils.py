@@ -7,6 +7,11 @@ import cv2 as cv
 
 # focal loss
 
+def viewim(im, cmap="gray"):
+    plt.imshow(im, cmap=cmap)
+    plt.show()
+
+
 def focal_loss(gamma=2., alpha=.25):
     import tensorflow as tf
 
@@ -109,3 +114,20 @@ def roc(by, bf, thresh=0):
     plt.title("avg=%3.3f, max=%3.3f" % (acc, maxacc))
     # plt.savefig("roc.png") # saving as svg is very time-consuming for the large scale of point cloud
     return acc
+
+
+def e2e_train(trainGene, valGene, model):
+    """
+    Function to perform end-to-end training with ki67 ground truth as reference image
+
+    Parameters
+    ----------
+    trainGene: training image generator
+    valGene: validation image generator
+    model: model to train.
+
+    Returns: model with updated parameters
+    -------
+
+    """
+    pass
