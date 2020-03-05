@@ -111,7 +111,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
                    kernel_initializer='he_normal')(conv9)
     conv9 = BatchNormalization()(conv9)
 
-    conv10 = Conv2D(1, 1, activation='sigmoid')(conv9)
+    conv10 = Conv2D(3, 1, activation='sigmoid')(conv9)
 
     model = Model(inputs=inputs, outputs=conv10)
     if multi_gpu:

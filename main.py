@@ -1,4 +1,4 @@
-mode = "mac"
+mode = "-mac"
 
 import os
 
@@ -59,13 +59,13 @@ test_size = (1024//(256//edge_size), 1024//(256//edge_size))
 
 bs = 32
 bs_v = 32
-step_num = 16000 // bs
+step_num = 15000 // bs
 
-checkpoint_period = 5
+checkpoint_period = 1
 flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
-num_epoches = 100
+num_epoches = 1
 framework = "k"
 model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja
@@ -74,20 +74,20 @@ data_name = "chipwise"
 trainGene = trainGenerator(bs,
                            train_path=train_path,
                            image_folder='chips',
-                           mask_folder='masks',
+                           mask_folder='dab',
                            aug_dict=data_gen_args,
                            save_to_dir=None,
                            image_color_mode="rgb",
-                           mask_color_mode="grayscale",
+                           mask_color_mode="rgb",
                            target_size=target_size)
 valGene = trainGenerator(bs_v,
                          train_path=val_path,
                          image_folder='chips',
-                         mask_folder='masks',
+                         mask_folder='dab',
                          aug_dict={},
                          save_to_dir=None,
                          image_color_mode="rgb",
-                         mask_color_mode="grayscale",
+                         mask_color_mode="rgb",
                          target_size=target_size)
 testGene = testGenerator(test_path, as_gray=False,
                          target_size=target_size)
@@ -115,6 +115,7 @@ if flag_continue:
     model = unet(pretrained_weights=continue_path,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
+                 loss=loss_name,
                  multi_gpu=flag_multi_gpu)
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
@@ -122,6 +123,7 @@ else:
     model = unet(pretrained_weights=None,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
+                 loss=loss_name,
                  multi_gpu=flag_multi_gpu)
     # model = unetxx(lr=lr)
 
@@ -171,7 +173,7 @@ if not flag_test:
     print(time.time() - start)
 
 # grid search
-for k in range(7, 100):
+for k in range(1, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
@@ -179,6 +181,7 @@ for k in range(7, 100):
     model = unet(pretrained_weights=start_path,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
+                 loss=loss_name,
                  multi_gpu=flag_multi_gpu)
     # model = denseunet(start_path)
     # model = unetxx(start_path,
@@ -187,9 +190,8 @@ for k in range(7, 100):
     (x, y) = valGene.__next__()
     f = model.predict(x, batch_size=bs_v)
     if mode == "mac":
-        while True:
-            tx, ty, tn = indexGene.__next__()
-            ft = single_prediction(tx, ty, tn, model, 256)
+        tx, ty, tn = indexGene.__next__()
+        ft = single_prediction(tx, ty, tn, model, 256)
     # plt.show()
     # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
     f1_max = 0;
