@@ -52,23 +52,23 @@ if mode == "mac":
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
-edge_size = 256
+edge_size = 128
 target_size = (edge_size, edge_size)
 
 test_size = (1024//(256//edge_size), 1024//(256//edge_size))
 
-bs = 32
+bs = 32*4
 bs_v = 32
 step_num = 15000 // bs
 
-checkpoint_period = 1
+checkpoint_period = 10
 flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
-num_epoches = 1
+num_epoches = 500
 framework = "k"
 model_name = "unet"
-loss_name = "bceja"  # focalja, bce, bceja, ja
+loss_name = "l1"  # focalja, bce, bceja, ja
 data_name = "chipwise"
 
 trainGene = trainGenerator(bs,
@@ -173,7 +173,7 @@ if not flag_test:
     print(time.time() - start)
 
 # grid search
-for k in range(1, 100):
+for k in range(40, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
@@ -192,38 +192,18 @@ for k in range(1, 100):
     if mode == "mac":
         tx, ty, tn = indexGene.__next__()
         ft = single_prediction(tx, ty, tn, model, 256)
-    # plt.show()
-    # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
-    f1_max = 0;
-    thresh_argmax_f1 = 0;
-    print(start_path)
-    print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
-    for thresh in np.linspace(0, 0.6, 50):
-        f1 = f1_score(y.reshape(-1, ) > 0, f.reshape(-1, ) > thresh)
-        if f1 > f1_max:
-            f1_max = f1
-            thresh_argmax_f1 = thresh
 
-    iou = jaccard_score(y.reshape(-1, ) > 0, f.reshape(-1, ) > thresh_argmax_f1)
-    print("IOU= ", iou)
-    print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
-    print(classification_report(y.reshape(-1, ) > 0, f.reshape(-1, ) > thresh_argmax_f1))
-
-    roc(y, f, thresh=0)
     fig = plt.figure(figsize=(20, 20))
     # plt.subplots(2,2)
     plt.subplot(221)
     plt.imshow(x[1, :, :, :])
     plt.title('Input')
     plt.subplot(222)
-    plt.imshow(y[1, :, :, 0], cmap='gray');
+    plt.imshow(y[1, :, :, :]);
     plt.title('GT')
     plt.subplot(223)
-    plt.imshow(f[1, :, :, 0], cmap='gray');
+    plt.imshow(f[1, :, :, :]);
     plt.title('Pred')
-    plt.subplot(224)
-    plt.imshow((f[1, :, :, 0] > thresh_argmax_f1), cmap='gray')
-    plt.title('Pred thresh')
     fig.tight_layout()
     plt.show()
 
