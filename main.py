@@ -38,56 +38,58 @@ data_gen_args = dict(rotation_range=5,
                      fill_mode='nearest')
 
 # On server. full annotated data 16040
-train_path = "/home/cunyuan/DATA/ORIG/chipwise/train/"
-val_path = "/home/cunyuan/DATA/ORIG/chipwise/val/"
+train_path = "/home/cunyuan/DATA/ORIG/256x8/"
+val_path = "/home/cunyuan/DATA/ORIG/val/"
 test_path = "/home/cunyuan/DATA/test_1024/k/"
 model_dir = "/home/cunyuan/models/"
 
 if mode == "mac":
     model_dir = "/Users/cunyuan/models/"
-    train_path = "/Users/cunyuan/DATA/chipwise/train/"
-    val_path = "/Users/cunyuan/DATA/chipwise/val1/"
+    train_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
+    val_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
     index_path = "/Users/cunyuan/DATA/ji1024/3e/val1024/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
-edge_size = 256
+edge_size = 128
 target_size = (edge_size, edge_size)
 
-test_size = (1024//(256//edge_size), 1024//(256//edge_size))
+test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
 
 bs = 32
 bs_v = 32
-step_num = 16000 // bs
+step_num = 270 // bs
 
 checkpoint_period = 5
-flag_test, flag_continue = 1, 0
+flag_test, flag_continue = 0, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 100
 framework = "k"
 model_name = "unet"
-loss_name = "bceja"  # focalja, bce, bceja, ja
-data_name = "chipwise"
+loss_name = "cce"  # focalja, bce, bceja, ja
+data_name = "alldata"
 
 trainGene = trainGenerator(bs,
                            train_path=train_path,
                            image_folder='chips',
-                           mask_folder='masks',
+                           mask_folder='chnmask',
                            aug_dict=data_gen_args,
                            save_to_dir=None,
                            image_color_mode="rgb",
-                           mask_color_mode="grayscale",
+                           mask_color_mode="rgb",
+                           flag_multi_class=True,
                            target_size=target_size)
 valGene = trainGenerator(bs_v,
-                         train_path=val_path,
+                         train_path=train_path,
                          image_folder='chips',
-                         mask_folder='masks',
+                         mask_folder='chnmask',
                          aug_dict={},
                          save_to_dir=None,
                          image_color_mode="rgb",
-                         mask_color_mode="grayscale",
+                         flag_multi_class=True,
+                         mask_color_mode="rgb",
                          target_size=target_size)
 testGene = testGenerator(test_path, as_gray=False,
                          target_size=target_size)
@@ -104,7 +106,6 @@ if mode == "mac":
                                    mask_color_mode="grayscale",
                                    target_size=test_size)
 
-
 model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % \
              (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[1] + continue_step[0])
 
@@ -115,6 +116,7 @@ if flag_continue:
     model = unet(pretrained_weights=continue_path,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
+                 loss=loss_name,
                  multi_gpu=flag_multi_gpu)
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
@@ -122,6 +124,7 @@ else:
     model = unet(pretrained_weights=None,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
+                 loss=loss_name,
                  multi_gpu=flag_multi_gpu)
     # model = unetxx(lr=lr)
 
@@ -179,6 +182,7 @@ for k in range(7, 100):
     model = unet(pretrained_weights=start_path,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
+                 loss=loss_name,
                  multi_gpu=flag_multi_gpu)
     # model = denseunet(start_path)
     # model = unetxx(start_path,
