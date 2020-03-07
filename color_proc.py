@@ -89,9 +89,9 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
             nchip = nuclei[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
                     0]/255
-            mask = net.predict(chip)[0, :, :, 0]
-            iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
-            f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            mask = net.predict(chip)[0, :, :, :]
+            # iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            # f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
             chip = chip[0, :, :, :]
             hema_texture = rgbdeconv(chip, H_Mou_inv, C=0)[:, :, 0]
             pseudo_dab = hema_texture * mask

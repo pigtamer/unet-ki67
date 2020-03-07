@@ -48,7 +48,8 @@ if mode == "mac":
     train_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
     val_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    index_path = "/Users/cunyuan/DATA/ji1024/3e/val1024/"
+    index_path = "/Users/cunyuan/DATA/MoNuSeg/orig/"
+    index_path = "/Users/cunyuan/DATA/ki67/Mou/4d/16/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
@@ -57,12 +58,16 @@ target_size = (edge_size, edge_size)
 
 test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
 
-bs = 32
-bs_v = 32
+bs = 16
+bs_v = 16
 step_num = 270 // bs
 
 checkpoint_period = 5
-flag_test, flag_continue = 0, 0
+
+"""
+-------------SWITCH-------------------
+"""
+flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 100
@@ -98,12 +103,12 @@ if mode == "mac":
     indexGene = indexTestGenerator(bs_v,
                                    train_path=index_path,
                                    image_folder='chips',
-                                   mask_folder='masks',
-                                   nuclei_folder="nuclei",
+                                   mask_folder='chnmask',
+                                   nuclei_folder="binmask",
                                    aug_dict={},
                                    save_to_dir=None,
                                    image_color_mode="rgb",
-                                   mask_color_mode="grayscale",
+                                   mask_color_mode="rgb",
                                    target_size=test_size)
 
 model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % \
@@ -174,7 +179,7 @@ if not flag_test:
     print(time.time() - start)
 
 # grid search
-for k in range(7, 100):
+for k in range(20, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
@@ -193,7 +198,7 @@ for k in range(7, 100):
     if mode == "mac":
         while True:
             tx, ty, tn = indexGene.__next__()
-            ft = single_prediction(tx, ty, tn, model, 256)
+            ft = single_prediction(tx, ty, tn, model, edge_size)
     # plt.show()
     # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
     f1_max = 0;
