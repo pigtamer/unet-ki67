@@ -77,32 +77,34 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     # TODO: 增加对padding的支持，图幅不一定是输入的整数倍
     w_num, h_num = W // net_sizein, H // net_sizein
     res = zeros((W, H, 3))
-    avgiou = 0; iou = 0; f1=0
+    avgiou = 0;
+    iou = 0;
+    f1 = 0
     for i in range(w_num):
         for j in range(h_num):
             chip = im_in[:, i * net_sizein:(i + 1) * net_sizein,
                    j * net_sizein:(j + 1) * net_sizein,
                    :]
             dchip = label[0, i * net_sizein:(i + 1) * net_sizein,
-                   j * net_sizein:(j + 1) * net_sizein,
-                   0]
+                    j * net_sizein:(j + 1) * net_sizein,
+                    0]
             nchip = nuclei[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
-                    0]/255
-            mask = net.predict(chip)[0, :, :, :]
-            # iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
-            # f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+                    0] / 255
+            mask = net.predict(chip)[0, :, :, 1]
+            iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
             chip = chip[0, :, :, :]
-            hema_texture = rgbdeconv(chip, H_Mou_inv, C=0)[:, :, 0]
-            pseudo_dab = hema_texture * mask
-            res[i * net_sizein:(i + 1) * net_sizein,
-            j * net_sizein:(j + 1) * net_sizein,
-            -1] = pseudo_dab
-            res[i * net_sizein:(i + 1) * net_sizein,
-            j * net_sizein:(j + 1) * net_sizein,
-            0] = hema_texture*0.5
-    iou /= (w_num*h_num)
-    f1 /=w_num*h_num
+            # hema_texture = rgbdeconv(chip, H_Mou_inv, C=0)[:, :, 0]
+            # pseudo_dab = hema_texture * mask[0, :, :, 1]
+            # res[i * net_sizein:(i + 1) * net_sizein,
+            # j * net_sizein:(j + 1) * net_sizein,
+            # -1] = pseudo_dab
+            # res[i * net_sizein:(i + 1) * net_sizein,
+            # j * net_sizein:(j + 1) * net_sizein,
+            # 0] = hema_texture * 0.5
+    iou /= (w_num * h_num)
+    f1 /= w_num * h_num
     print(iou, f1)
     res = hecconv(res, H_ki67)
     fig = plt.figure(figsize=(20, 20))
@@ -110,5 +112,3 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     plt.axis("off")
     fig.tight_layout()
     plt.show()
-
-

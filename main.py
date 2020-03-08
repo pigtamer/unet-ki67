@@ -49,7 +49,7 @@ if mode == "mac":
     val_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
     index_path = "/Users/cunyuan/DATA/MoNuSeg/orig/"
-    index_path = "/Users/cunyuan/DATA/ki67/Mou/4d/16/"
+    index_path = "/Users/cunyuan/DATA/ki67/Mou/4d/161/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
@@ -69,7 +69,7 @@ checkpoint_period = 5
 """
 flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
-continue_step = (0, 0)
+continue_step = (0, 100)
 num_epoches = 100
 framework = "k"
 model_name = "unet"
@@ -103,7 +103,7 @@ if mode == "mac":
     indexGene = indexTestGenerator(bs_v,
                                    train_path=index_path,
                                    image_folder='chips',
-                                   mask_folder='chnmask',
+                                   mask_folder='binmask',
                                    nuclei_folder="binmask",
                                    aug_dict={},
                                    save_to_dir=None,
