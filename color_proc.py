@@ -78,6 +78,7 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     # TODO: 增加对padding的支持，图幅不一定是输入的整数倍
     w_num, h_num = W // net_sizein, H // net_sizein
     res = zeros((W, H, 3))
+    res_set = zeros((W, H))
     avgiou = 0;
     iou = 0;
     f1 = 0
@@ -146,6 +147,7 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
 
             hema_texture = rgbdeconv(chip, H_Mou_inv, C=0)[:, :, 0]
             pseudo_dab = hema_texture * mask
+
             res[i * net_sizein:(i + 1) * net_sizein,
             j * net_sizein:(j + 1) * net_sizein,
             -1] = pseudo_dab
@@ -153,7 +155,16 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
             j * net_sizein:(j + 1) * net_sizein,
             0] = hema_texture * 0.5
 
-    if num_pred!=0 and num_positive!=0 and num_all !=0:
+            res_set[i * net_sizein:(i + 1) * net_sizein,
+            j * net_sizein:(j + 1) * net_sizein] = nuclei_ * 2 + label_ * 4 + pred_ * 8 + tp_map * 16
+
+    plt.figure(figsize=(6,6))
+    plt.imshow(res_set);
+    plt.axis('off');
+    plt.title("Region counting policy")
+    plt.show()
+
+    if num_pred != 0 and num_positive != 0 and num_all != 0:
         pprecision = num_tp / num_pred
         precall = num_tp / num_positive
         acc_regional = (num_tp + num_tn) / num_all
