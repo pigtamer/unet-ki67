@@ -48,7 +48,7 @@ if mode == "mac":
     train_path = "/Users/cunyuan/DATA/chipwise/train/"
     val_path = "/Users/cunyuan/DATA/chipwise/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    index_path = "/Users/cunyuan/DATA/ji1024_orig/3e/val1024/"
+    index_path = "/Users/cunyuan/DATA/ji1024_orig/4d/val1024/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
