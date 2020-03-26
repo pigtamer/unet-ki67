@@ -64,7 +64,7 @@ bs_v = 1
 step_num = 900 // bs
 
 checkpoint_period = 10
-flag_test, flag_continue = 0, 0
+flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 500
@@ -174,7 +174,7 @@ if not flag_test:
     print(time.time() - start)
 
 # grid search
-for k in range(40, 100):
+for k in range(5, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
@@ -187,26 +187,26 @@ for k in range(40, 100):
     # model = denseunet(start_path)
     # model = unetxx(start_path,
     #                lr=lr)
+    while True:
+        (x, y) = valGene.__next__()
+        f = model.predict(x, batch_size=bs_v)
+        if mode == "mac":
+            while True:
+                tx, ty, tn = indexGene.__next__()
+                ft = single_prediction(tx, ty, tn, model, edge_size)
 
-    (x, y) = valGene.__next__()
-    f = model.predict(x, batch_size=bs_v)
-    if mode == "mac":
-        while True:
-            tx, ty, tn = indexGene.__next__()
-            ft = single_prediction(tx, ty, tn, model, edge_size)
-
-    fig = plt.figure(figsize=(20, 20))
-    # plt.subplots(2,2)
-    plt.subplot(221)
-    plt.imshow(x[1, :, :, :])
-    plt.title('Input')
-    plt.subplot(222)
-    plt.imshow(y[1, :, :, :]);
-    plt.title('GT')
-    plt.subplot(223)
-    plt.imshow(f[1, :, :, :]);
-    plt.title('Pred')
-    fig.tight_layout()
-    plt.show()
+        fig = plt.figure(figsize=(20, 20))
+        # plt.subplots(2,2)
+        plt.subplot(221)
+        plt.imshow(x[0, :, :, :])
+        plt.title('Input')
+        plt.subplot(222)
+        plt.imshow(y[0, :, :, :]);
+        plt.title('GT')
+        plt.subplot(223)
+        plt.imshow(f[0, :, :, :]);
+        plt.title('Pred')
+        fig.tight_layout()
+        plt.show()
 
 results = model.predict_generator(testGene, 30, verbose=1)
