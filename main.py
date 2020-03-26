@@ -1,4 +1,4 @@
-mode = "mac"
+mode = "-mac"
 
 import os
 
@@ -38,8 +38,8 @@ data_gen_args = dict(rotation_range=5,
                      fill_mode='nearest')
 
 # On server. full annotated data 16040
-train_path = "/home/cunyuan/DATA/ORIG/chipwise/train/"
-val_path = "/home/cunyuan/DATA/ORIG/chipwise/val/"
+train_path = "/home/cunyuan/DATA/ORIG/ihc_4d/train/"
+val_path = "/home/cunyuan/DATA/ORIG/ihc_4d/val/"
 test_path = "/home/cunyuan/DATA/test_1024/k/"
 model_dir = "/home/cunyuan/models/"
 
@@ -53,25 +53,25 @@ if mode == "mac":
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
-edge_size = 128
+edge_size = 256
 target_size = (edge_size, edge_size)
 
-test_size = (1024//(256//edge_size), 1024//(256//edge_size))
-test_size = (256,256)
+test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
+test_size = (256, 256)
 
-bs = 32*4
+bs = 8
 bs_v = 1
-step_num = 15000 // bs
+step_num = 900 // bs
 
 checkpoint_period = 10
-flag_test, flag_continue = 1, 0
+flag_test, flag_continue = 0, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 500
 framework = "k"
 model_name = "unet"
 loss_name = "l1"  # focalja, bce, bceja, ja
-data_name = "chipwise"
+data_name = "ihc_4d"
 
 trainGene = trainGenerator(bs,
                            train_path=train_path,
@@ -106,7 +106,6 @@ if mode == "mac":
                                    mask_color_mode="grayscale",
                                    target_size=test_size)
 
-
 model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % \
              (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[1] + continue_step[0])
 
@@ -129,7 +128,7 @@ else:
                  multi_gpu=flag_multi_gpu)
     # model = unetxx(lr=lr)
 
-plot_model(model, to_file="model.svg")
+# plot_model(model, to_file="model.svg")
 """
 Train the model
 
