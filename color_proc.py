@@ -89,22 +89,22 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
             nchip = nuclei[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
                     0]/255
-            mask = net.predict(chip)[0, :, :, 0]
-            iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
-            f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
-            chip = chip[0, :, :, :]
-            hema_texture = rgbdeconv(chip, H_Mou_inv, C=0)[:, :, 0]
-            pseudo_dab = hema_texture * mask
+            mask = net.predict(chip)[0, :, :, :]
+            # iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            # f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            # chip = chip[0, :, :, :]
+            # hema_texture = rgbdeconv(chip, H_Mou_inv, C=0)[:, :, 0]
+            # pseudo_dab = hema_texture * mask
             res[i * net_sizein:(i + 1) * net_sizein,
             j * net_sizein:(j + 1) * net_sizein,
-            -1] = pseudo_dab
-            res[i * net_sizein:(i + 1) * net_sizein,
-            j * net_sizein:(j + 1) * net_sizein,
-            0] = hema_texture*0.5
+            :] = mask
+            # res[i * net_sizein:(i + 1) * net_sizein,
+            # j * net_sizein:(j + 1) * net_sizein,
+            # 0] = hema_texture*0.5
     iou /= (w_num*h_num)
     f1 /=w_num*h_num
     print(iou, f1)
-    res = hecconv(res, H_ki67)
+    # res = hecconv(res, H_ki67)
     fig = plt.figure(figsize=(20, 20))
     plt.imshow(res)
     plt.axis("off")

@@ -1,4 +1,4 @@
-mode = "-mac"
+mode = "mac"
 
 import os
 
@@ -48,7 +48,8 @@ if mode == "mac":
     train_path = "/Users/cunyuan/DATA/chipwise/train/"
     val_path = "/Users/cunyuan/DATA/chipwise/val1/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    index_path = "/Users/cunyuan/DATA/ji1024/3e/val1024/"
+    index_path = "/Users/cunyuan/DATA/ji1024_orig/4d/val1024/"
+    index_path = "/Users/cunyuan/code/me/gan/keras-gan/cyclegan/datasets/minimal/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
@@ -56,9 +57,10 @@ edge_size = 128
 target_size = (edge_size, edge_size)
 
 test_size = (1024//(256//edge_size), 1024//(256//edge_size))
+test_size = (256,256)
 
 bs = 32*4
-bs_v = 32
+bs_v = 1
 step_num = 15000 // bs
 
 checkpoint_period = 10
@@ -190,8 +192,9 @@ for k in range(40, 100):
     (x, y) = valGene.__next__()
     f = model.predict(x, batch_size=bs_v)
     if mode == "mac":
-        tx, ty, tn = indexGene.__next__()
-        ft = single_prediction(tx, ty, tn, model, 256)
+        while True:
+            tx, ty, tn = indexGene.__next__()
+            ft = single_prediction(tx, ty, tn, model, edge_size)
 
     fig = plt.figure(figsize=(20, 20))
     # plt.subplots(2,2)
