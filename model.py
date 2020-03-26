@@ -32,7 +32,7 @@ loss_dict = {
     "l2": losses.mean_squared_error
 }
 
-def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=False, loss="l1"):
+def unet(input_size=(256, 256, 3)):
     # 所有等号左侧其实不是层而是张量吗...
     # 是的！ 因为这里使用了keras的函数式API。每一个层都是可以调用的...而在左边返回输出的张量
     inputs = Input(input_size)
@@ -114,19 +114,6 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
     conv10 = Conv2D(1, 1, activation='sigmoid')(conv9)
 
     model = Model(inputs=inputs, outputs=conv10)
-    if multi_gpu:
-        strategy = tf.distribute.MirroredStrategy()
-        with strategy.scope():
-            model = multi_gpu_model(model, gpus=2)
-            model.compile(optimizer=Adam(lr=lr),
-                          loss=sm.losses.binary_focal_jaccard_loss, metrics=[sm.metrics.iou_score, 'accuracy'])
-    else:
-        model.compile(optimizer=Adam(lr=lr),
-                      loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
-
-    # model.summary()
-    if pretrained_weights:
-        model.load_weights(pretrained_weights)
 
     return model
 

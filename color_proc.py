@@ -75,7 +75,6 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     W, H = im_in.shape[1], im_in.shape[2]
     if W % net_sizein != 0 or H % net_sizein != 0:
         raise ValueError("")
-    # TODO: 增加对padding的支持，图幅不一定是输入的整数倍
     w_num, h_num = W // net_sizein, H // net_sizein
     res = zeros((W, H, 3))
     res_set = zeros((W, H, 3))
