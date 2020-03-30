@@ -1,4 +1,4 @@
-mode = "mac"
+mode = "-mac"
 
 import os
 
@@ -57,17 +57,17 @@ target_size = (edge_size, edge_size)
 
 test_size = (1024//(256//edge_size), 1024//(256//edge_size))
 
-bs = 32
-bs_v = 32
-step_num = 16000 // bs
+bs = 16
+bs_v = 16
+step_num = 14480 // bs
 
-checkpoint_period = 5
-flag_test, flag_continue = 1, 0
+checkpoint_period = 10
+flag_test, flag_continue = 0, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 100
 framework = "k"
-model_name = "unet"
+model_name = "unet-res9"
 loss_name = "bceja"  # focalja, bce, bceja, ja
 data_name = "chipwise"
 
@@ -115,14 +115,16 @@ if flag_continue:
     model = unet(pretrained_weights=continue_path,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
-                 multi_gpu=flag_multi_gpu)
+                 multi_gpu=flag_multi_gpu,
+                 loss = loss_name)
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
 else:
     model = unet(pretrained_weights=None,
                  input_size=(target_size[0], target_size[1], 3),
                  lr=lr,
-                 multi_gpu=flag_multi_gpu)
+                 multi_gpu=flag_multi_gpu,
+                 loss = loss_name)
     # model = unetxx(lr=lr)
 
 plot_model(model, to_file="model.svg")
@@ -192,8 +194,8 @@ for k in range(7, 100):
             ft = single_prediction(tx, ty, tn, model, 256)
     # plt.show()
     # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
-    f1_max = 0;
-    thresh_argmax_f1 = 0;
+    f1_max = 0
+    thresh_argmax_f1 = 0
     print(start_path)
     print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
     for thresh in np.linspace(0, 0.6, 50):
@@ -214,10 +216,10 @@ for k in range(7, 100):
     plt.imshow(x[1, :, :, :])
     plt.title('Input')
     plt.subplot(222)
-    plt.imshow(y[1, :, :, 0], cmap='gray');
+    plt.imshow(y[1, :, :, 0], cmap='gray')
     plt.title('GT')
     plt.subplot(223)
-    plt.imshow(f[1, :, :, 0], cmap='gray');
+    plt.imshow(f[1, :, :, 0], cmap='gray')
     plt.title('Pred')
     plt.subplot(224)
     plt.imshow((f[1, :, :, 0] > thresh_argmax_f1), cmap='gray')
