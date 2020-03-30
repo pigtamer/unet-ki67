@@ -36,6 +36,21 @@ loss_dict = {
 def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=False, loss="l1"):
     # 所有等号左侧其实不是层而是张量吗...
     # 是的！ 因为这里使用了keras的函数式API。每一个层都是可以调用的...而在左边返回输出的张量
+    def resblock(layer_input, filters, f_size=3):
+        r = Conv2D(filters, kernel_size=f_size, strides=1, padding='same')(layer_input)
+        r = LeakyReLU(alpha=0.2)(r)
+        r = InstanceNormalization()(r)
+        r = Conv2D(filters, kernel_size=f_size, strides=1, padding='same')(r)
+        r = LeakyReLU(alpha=0.2)(r)
+        r = Add()([r, layer_input])
+        return InstanceNormalization()(r)
+
+    def resblockn(n, layer_input, filters, f_size=3):
+        x = layer_input
+        for k in range(n):
+            x = resblock(x, filters, f_size)
+        return x
+
     inputs = Input(input_size)
     conv1 = Conv2D(64, 3, activation='relu', padding='same',
                    kernel_initializer='he_normal')(inputs)
@@ -75,8 +90,12 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
     drop5 = Dropout(0.5)(conv5)
 
+    res5 = resblockn(9, drop5, 1024)
+
+
     up6 = Conv2D(512, 2, activation='relu', padding='same',
-                 kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(drop5))
+                 kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(res5))
+
     merge6 = concatenate([drop4, up6], axis=3)
     conv6 = Conv2D(512, 3, activation='relu', padding='same',
                    kernel_initializer='he_normal')(merge6)
