@@ -45,11 +45,10 @@ model_dir = "/home/cunyuan/models/"
 
 if mode == "mac":
     model_dir = "/Users/cunyuan/models/"
-    train_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
-    val_path = "/Users/cunyuan/DATA/MoNuSeg/256/"
+    train_path = "/Users/cunyuan/DATA/chipwise/train/"
+    val_path = "/Users/cunyuan/DATA/chipwise/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    index_path = "/Users/cunyuan/DATA/MoNuSeg/orig/"
-    index_path = "/Users/cunyuan/DATA/ki67/Mou/4d/161/"
+    index_path = "/Users/cunyuan/DATA/ji1024_orig/4d/val1024/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
