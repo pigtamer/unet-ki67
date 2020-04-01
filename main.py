@@ -171,7 +171,7 @@ if not flag_test:
     print(time.time() - start)
 
 # grid search
-for k in range(7, 100):
+for k in range(20, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
