@@ -160,7 +160,7 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
             # num_positive += len(ncts_lbl)
             # num_pred += len(ncts_pred)
             # num_tp += len(ncts_tp)
-
+            num_npred = num_all - num_pred
             num_negative = num_all - num_positive
             num_tn = num_all - (num_positive + num_pred - num_tp)
             num_fn = num_positive - num_tp
@@ -209,9 +209,9 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
 
         print("=-=" * 10)
         print("Overall acc%f" % (acc_regional))
-        print("Precision: %f\nRecall %f\n" % (
+        print("Precision: %f\nRecall %f\n"  % (
             pprecision, precall))
-    lbi = num_pred / num_negative
+    lbi = num_pred / num_npred
     lbi_true = num_positive / num_negative
     print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
     plt.figure(figsize=(6, 6))
@@ -229,3 +229,4 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     plt.axis("off")
     fig.tight_layout()
     plt.show()
+    return (num_tp, num_tn, num_pred, num_npred, num_positive, num_negative)
