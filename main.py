@@ -49,14 +49,14 @@ if mode == "mac":
     val_path = "/Users/cunyuan/DATA/chipwise/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
     index_path = "/Users/cunyuan/DATA/ji1024_orig/val1024/"
-
+    index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
 
 test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
-
+test_size = (256, 256)
 bs = 16
 bs_v = 4
 bs_i = 1
@@ -175,7 +175,7 @@ if not flag_test:
 
 val_iters = 1280 // bs_v
 # grid search
-for k in range(10, 100):
+for k in range(20, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
@@ -187,64 +187,64 @@ for k in range(10, 100):
     # model = denseunet(start_path)
     # model = unetxx(start_path,
     #                lr=lr)
-    for k_val, (x, y) in zip(range(val_iters), valGene):
-        f = model.predict(x, batch_size=bs_v)
-        # plt.show()
-        # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
-
-        if k_val == 0:
-            f1_max = 0
-            X, Y, F = x, y, f
-            thresh_argmax_f1 = 0
-            print(start_path)
-            print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
-            for thresh in np.linspace(0, 0.6, 50):
-                f1 = f1_score(y.reshape(-1, ) > 0, f.reshape(-1, ) > thresh)
-                if f1 > f1_max:
-                    f1_max = f1
-                    thresh_argmax_f1 = thresh
-            print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
-        else:
-            Y, F = np.concatenate([Y, y], axis=0), np.concatenate([F, f], axis=0)
-        print(k_val)
-
-    iou = jaccard_score(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh_argmax_f1)
-    print("IOU= ", iou)
-    print(classification_report(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh_argmax_f1))
-
-    from sklearn.metrics import roc_curve, auc
-
-    # roc(Y, F, thresh=0)
-    fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-    area_under_curve = auc(fpr, tpr)
-    plt.figure(figsize=(8, 8))
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.plot(fpr, tpr, label='AUC = {:.3f}'.format(area_under_curve))
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    plt.title('ROC curve')
-    plt.legend(loc='best')
-    plt.tight_layout()
-    plt.grid()
-    plt.show()
-
-    for kk in range(min(bs_v, 10)):
-        fig = plt.figure(figsize=(20, 20))
-        # plt.subplots(2,2)
-        plt.subplot(221)
-        plt.imshow(x[kk, :, :, :])
-        plt.title('Input')
-        plt.subplot(222)
-        plt.imshow(y[kk, :, :, 0], cmap='gray')
-        plt.title('GT')
-        plt.subplot(223)
-        plt.imshow(f[kk, :, :, 0], cmap='gray')
-        plt.title('Pred')
-        plt.subplot(224)
-        plt.imshow((f[kk, :, :, 0] > thresh_argmax_f1), cmap='gray')
-        plt.title('Pred thresh')
-        fig.tight_layout()
-        plt.show()
+    # for k_val, (x, y) in zip(range(val_iters), valGene):
+    #     f = model.predict(x, batch_size=bs_v)
+    #     # plt.show()
+    #     # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
+    #
+    #     if k_val == 0:
+    #         f1_max = 0
+    #         X, Y, F = x, y, f
+    #         thresh_argmax_f1 = 0
+    #         print(start_path)
+    #         print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
+    #         for thresh in np.linspace(0, 0.6, 50):
+    #             f1 = f1_score(y.reshape(-1, ) > 0, f.reshape(-1, ) > thresh)
+    #             if f1 > f1_max:
+    #                 f1_max = f1
+    #                 thresh_argmax_f1 = thresh
+    #         print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
+    #     else:
+    #         Y, F = np.concatenate([Y, y], axis=0), np.concatenate([F, f], axis=0)
+    #     print(k_val)
+    #
+    # iou = jaccard_score(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh_argmax_f1)
+    # print("IOU= ", iou)
+    # print(classification_report(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh_argmax_f1))
+    #
+    # from sklearn.metrics import roc_curve, auc
+    #
+    # # roc(Y, F, thresh=0)
+    # fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
+    # area_under_curve = auc(fpr, tpr)
+    # plt.figure(figsize=(8, 8))
+    # plt.plot([0, 1], [0, 1], 'k--')
+    # plt.plot(fpr, tpr, label='AUC = {:.3f}'.format(area_under_curve))
+    # plt.xlabel('False positive rate')
+    # plt.ylabel('True positive rate')
+    # plt.title('ROC curve')
+    # plt.legend(loc='best')
+    # plt.tight_layout()
+    # plt.grid()
+    # plt.show()
+    #
+    # for kk in range(min(bs_v, 10)):
+    #     fig = plt.figure(figsize=(20, 20))
+    #     # plt.subplots(2,2)
+    #     plt.subplot(221)
+    #     plt.imshow(x[kk, :, :, :])
+    #     plt.title('Input')
+    #     plt.subplot(222)
+    #     plt.imshow(y[kk, :, :, 0], cmap='gray')
+    #     plt.title('GT')
+    #     plt.subplot(223)
+    #     plt.imshow(f[kk, :, :, 0], cmap='gray')
+    #     plt.title('Pred')
+    #     plt.subplot(224)
+    #     plt.imshow((f[kk, :, :, 0] > thresh_argmax_f1), cmap='gray')
+    #     plt.title('Pred thresh')
+    #     fig.tight_layout()
+    #     plt.show()
 
     if mode == "mac":
         num_tp_, num_tn_, num_pred_, num_npred_, num_positive_, num_negative_ = 0, 0, 0, 0, 0, 0
