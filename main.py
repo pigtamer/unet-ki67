@@ -1,4 +1,4 @@
-mode = "-mac"
+mode = "mac"
 
 import os
 
@@ -49,7 +49,7 @@ if mode == "mac":
     val_path = "/Users/cunyuan/DATA/chipwise/val1/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
     index_path = "/Users/cunyuan/DATA/ji1024_orig/4d/val1024/"
-    index_path = "/Users/cunyuan/code/me/gan/keras-gan/cyclegan/datasets/minimal/"
+    index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
 
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
