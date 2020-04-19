@@ -48,15 +48,15 @@ if mode == "mac":
     train_path = "/Users/cunyuan/DATA/chipwise/train/"
     val_path = "/Users/cunyuan/DATA/chipwise/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    index_path = "/Users/cunyuan/DATA/ji1024_orig/val1024/"
-    index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
+    index_path = "/Users/cunyuan/DATA/ji1024_orig/3e/val1024/"
+    # index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
 
 test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
-test_size = (256, 256)
+# test_size = (256, 256)
 bs = 16
 bs_v = 4
 bs_i = 1
@@ -248,7 +248,7 @@ for k in range(20, 100):
 
     if mode == "mac":
         num_tp_, num_tn_, num_pred_, num_npred_, num_positive_, num_negative_ = 0, 0, 0, 0, 0, 0
-        for kk, (tx, ty, tn) in zip(range(17), indexGene):
+        for kk, (tx, ty, tn) in zip(range(7), indexGene):
             # tx, ty, tn = indexGene.__next__()
             num_tp, num_tn, num_pred, num_npred, num_positive, num_negative = single_prediction(tx, ty, tn, model, 256)
             num_tp_ += num_tp
