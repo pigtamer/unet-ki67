@@ -207,26 +207,27 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
         precall = num_tp / num_positive
         acc_regional = (num_tp + num_tn) / num_all
 
-        print("=-=" * 10)
-        print("Overall acc%f" % (acc_regional))
-        print("Precision: %f\nRecall %f\n"  % (
-            pprecision, precall))
-    lbi = num_pred / num_npred
-    lbi_true = num_positive / num_negative
-    print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
+        # print("=-=" * 10)
+        # print("Overall acc%f" % (acc_regional))
+        # print("Precision: %f\nRecall %f\n" % (
+        #     pprecision, precall))
+    lbi = num_pred / (num_npred + 1E-6)
+    lbi_true = num_positive / (num_negative+1E-6)
+    # print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
     plt.figure(figsize=(6, 6))
     plt.imshow(res_set);
     plt.axis('off');
-    plt.title("Region # policy Prec. %3.2f Rec. %3.2f" % (pprecision, precall))
-    plt.show()
+    plt.title("Region # policy Prec. %3.2f Rec. %3.2f\nLabelling index: [True] %3.2f [Ours] %3.2f" %
+              (pprecision, precall, lbi_true, lbi))
 
     iou /= (w_num * h_num)
     f1 /= w_num * h_num
-    print(iou, f1)
+    # print(iou, f1)
     res = hecconv(res, H_ki67)
+    res = np.clip(res, 0, 1)
     fig = plt.figure(figsize=(20, 20))
     plt.imshow(res)
     plt.axis("off")
     fig.tight_layout()
-    plt.show()
-    return (num_tp, num_tn, num_pred, num_npred, num_positive, num_negative)
+    # plt.show()
+    return (num_tp, num_tn, num_pred, num_npred, num_positive, num_negative, iou, res)
