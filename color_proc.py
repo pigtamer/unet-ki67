@@ -211,8 +211,8 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
         # print("Overall acc%f" % (acc_regional))
         # print("Precision: %f\nRecall %f\n" % (
         #     pprecision, precall))
-    lbi = num_pred / (num_npred + 1E-6)
-    lbi_true = num_positive / (num_negative+1E-6)
+    lbi = num_pred / (num_all + 1E-6)
+    lbi_true = num_positive / (num_all+1E-6)
     # print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
     plt.figure(figsize=(6, 6))
     plt.imshow(res_set);
@@ -229,5 +229,5 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     plt.imshow(res)
     plt.axis("off")
     fig.tight_layout()
-    # plt.show()
+    plt.show()
     return (num_tp, num_tn, num_pred, num_npred, num_positive, num_negative, iou, res)

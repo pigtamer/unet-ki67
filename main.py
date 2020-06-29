@@ -47,16 +47,19 @@ if mode == "mac":
     model_dir = "/Users/cunyuan/models/"
     train_path = "/Users/cunyuan/DATA/chipwise/train/"
     val_path = "/Users/cunyuan/DATA/chipwise/val/"
+    val_path="/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
     index_path = "/Users/cunyuan/DATA/ji1024_orig/val1024/"
     # index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
+    # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
+    # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
 lr = 1E-3
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
 
 test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
-test_size = (256, 256)
+# test_size = (3328, 3328)
 bs = 16
 bs_v = 4
 bs_i = 1
@@ -70,7 +73,7 @@ num_epoches = 100
 framework = "k"
 model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja
-data_name = "chipwise"
+data_name = "kmr7930"
 
 trainGene = trainGenerator(bs,
                            train_path=train_path,
@@ -95,7 +98,7 @@ testGene = testGenerator(test_path, as_gray=False,
 
 if mode == "mac":
     indexGene = indexTestGenerator(bs_i,
-                                   train_path=val_path,
+                                   train_path=index_path,
                                    image_folder='chips',
                                    mask_folder='masks',
                                    nuclei_folder="nuclei",
@@ -103,6 +106,7 @@ if mode == "mac":
                                    save_to_dir=None,
                                    image_color_mode="rgb",
                                    mask_color_mode="grayscale",
+                                   nuclei_color_mode="grayscale",
                                    target_size=test_size)
 
 model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % \
@@ -175,7 +179,7 @@ if not flag_test:
 
 val_iters = 1280 // bs_v
 # grid search
-for k in range(20, 100):
+for k in range(30, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % \
                  (framework, model_name, data_name, loss_name, edge_size, lrstr, continue_step[0] + continue_step[1],
@@ -217,7 +221,7 @@ for k in range(20, 100):
     # # roc(Y, F, thresh=0)
     # fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
     # area_under_curve = auc(fpr, tpr)
-    # plt.figure(figsize=(8, 8))
+    # plt.figure(figsize=(8, 8), dpi=300)
     # plt.plot([0, 1], [0, 1], 'k--')
     # plt.plot(fpr, tpr, label='AUC = {:.3f}'.format(area_under_curve))
     # plt.xlabel('False positive rate')
@@ -227,7 +231,7 @@ for k in range(20, 100):
     # plt.tight_layout()
     # plt.grid()
     # plt.show()
-    #
+
     # for kk in range(min(bs_v, 10)):
     #     fig = plt.figure(figsize=(20, 20))
     #     # plt.subplots(2,2)
@@ -249,7 +253,7 @@ for k in range(20, 100):
     if mode == "mac":
         num_tp_, num_tn_, num_pred_, num_npred_, num_positive_, num_negative_ = 0, 0, 0, 0, 0, 0
         avgiou=0
-        for kk, (tx, ty, tn) in zip(range(1000), indexGene):
+        for kk, (tx, ty, tn) in zip(range(10), indexGene):
             # tx, ty, tn = indexGene.__next__()
             num_tp, num_tn, num_pred, num_npred, num_positive, num_negative,iou, res = single_prediction(tx, ty, tn, model, 256)
             num_tp_ += num_tp
@@ -259,7 +263,11 @@ for k in range(20, 100):
             num_positive_ += num_positive
             num_negative_ += num_negative
             avgiou += iou
-            plt.imsave("/Users/cunyuan/test_seq_%d.png"%kk, res)
+            # plt.show()
+            # plt.imsave("/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/test_seq_%d.png"%kk, res)
+            # plt.imsave("/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/he_seq_%d.png"%kk, tx[0])
+            # plt.imsave("/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/ihc_seq_%d.png"%kk, tn[0])
+            # plt.imsave("/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/mask_seq_%d.png"%kk, tn[0, :, :, 0], cmap="gray")
             print(kk)
         avgiou /= (kk+1)
         print("avgiou:", avgiou)

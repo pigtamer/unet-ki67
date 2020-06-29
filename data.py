@@ -101,7 +101,9 @@ def testGenerator(test_path, num_image=30, target_size=(256, 256),
 
 def indexTestGenerator(batch_size, train_path, image_folder, mask_folder, nuclei_folder, aug_dict,
                        image_color_mode="rgb",
-                       mask_color_mode="grayscale", image_save_prefix="image", mask_save_prefix="mask",
+                       mask_color_mode="grayscale",
+                       nuclei_color_mode="rgb",
+                       image_save_prefix="image", mask_save_prefix="mask",
                        flag_multi_class=False, num_class=2, save_to_dir=None, target_size=(256, 256), seed=1):
     image_datagen = ImageDataGenerator(**aug_dict)
     mask_datagen = ImageDataGenerator(**aug_dict)
@@ -130,7 +132,7 @@ def indexTestGenerator(batch_size, train_path, image_folder, mask_folder, nuclei
         train_path,
         classes=[nuclei_folder],
         class_mode=None,
-        color_mode=mask_color_mode,
+        color_mode=nuclei_color_mode,
         target_size=target_size,
         batch_size=batch_size,
         save_to_dir=save_to_dir,
@@ -139,7 +141,10 @@ def indexTestGenerator(batch_size, train_path, image_folder, mask_folder, nuclei
     train_generator = zip(image_generator, mask_generator, nuclei_generator)
     for (img, mask, nuclei) in train_generator:
         img, mask = adjustData(img, mask, flag_multi_class, num_class)
-        img, nuclei = adjustData(img, nuclei, flag_multi_class, num_class)
+        if nuclei_color_mode != "rgb":
+            img, nuclei = adjustData(img, nuclei, flag_multi_class, num_class)
+        else:
+            nuclei /= 255
         yield img, mask, nuclei
 
 
