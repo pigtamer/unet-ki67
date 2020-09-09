@@ -1,4 +1,7 @@
-mode = "mac"
+#%%
+# %matplotlib inline
+
+mode = "-mac"
 
 import os
 
@@ -13,6 +16,8 @@ from color_proc import *
 import segmentation_models as sm
 from segmodel import denseunet, unetxx
 import time
+from tqdm import tqdm
+
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -20,28 +25,28 @@ from sklearn.metrics import (
     jaccard_score,
 )
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-e",
-    "--epoches",
-    dest="num_epoches",
-    help="int: trainig epoches",
-    type=int,
-    default=50,
-)
-parser.add_argument(
-    "-bs",
-    "--batch_size",
-    dest="batch_size",
-    help="int: batch size for training",
-    type=int,
-    default=2,
-)
-parser.add_argument(
-    "-is", "--imsize", dest="input_size", help="int: input size", type=int, default=1024
-)
+# parser = argparse.ArgumentParser()
+# parser.add_argument(
+#     "-e",
+#     "--epoches",
+#     dest="num_epoches",
+#     help="int: trainig epoches",
+#     type=int,
+#     default=50,
+# )
+# parser.add_argument(
+#     "-bs",
+#     "--batch_size",
+#     dest="batch_size",
+#     help="int: batch size for training",
+#     type=int,
+#     default=2,
+# )
+# parser.add_argument(
+#     "-is", "--imsize", dest="input_size", help="int: input size", type=int, default=1024
+# )
 
-args = parser.parse_args()
+# args = parser.parse_args()
 
 data_gen_args = dict(
     rotation_range=5,
@@ -88,7 +93,7 @@ bs_i = 1
 step_num = 14480 // bs
 
 checkpoint_period = 10
-flag_test, flag_continue = 1, 0
+flag_test, flag_continue = 0, 0
 flag_multi_gpu = 0
 continue_step = (0, 40)
 num_epoches = 100
@@ -100,8 +105,8 @@ data_name = "kmr7930x8"
 trainGene = trainGenerator(
     bs,
     train_path=train_path,
-    image_folder="chips",
-    mask_folder="masks",
+    image_folder=["chips", "masks"],
+    mask_folder=["chips", "masks"],
     aug_dict=data_gen_args,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -111,8 +116,8 @@ trainGene = trainGenerator(
 valGene = trainGenerator(
     bs_v,
     train_path=val_path,
-    image_folder="chips",
-    mask_folder="masks",
+    image_folder=["chips"],
+    mask_folder=["masks"],
     aug_dict={},
     save_to_dir=None,
     image_color_mode="rgb",
@@ -263,69 +268,69 @@ for k in range(3, 100):
     # model = denseunet(start_path)
     # model = unetxx(start_path,
     #                lr=lr)
-    # for k_val, (x, y) in zip(range(val_iters), valGene):
-    #     f = model.predict(x, batch_size=bs_v)
-    #     # plt.show()
-    #     # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
-    #
-    #     if k_val == 0:
-    #         X, Y, F = x, y, f
-    #         thresh_argmax_f1 = 0
-    #         print(start_path)
-    #         print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
-    #
-    #     else:
-    #         Y, F = np.concatenate([Y, y], axis=0), np.concatenate([F, f], axis=0)
-    #
-    #     print(k_val)
-    #
-    # # f1_max = 0
-    # # for thresh in np.linspace(0, 1, 5):
-    # #     f1 = f1_score(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh)
-    # #     if f1 > f1_max:
-    # #         f1_max = f1
-    # #         thresh_argmax_f1 = thresh
-    # #     print(thresh)
-    # # print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
-    #
-    # thresh_argmax_f1 = 0.5
-    # iou = jaccard_score(Y.reshape(-1, )>0, F.reshape(-1, )>thresh_argmax_f1)
-    # print("IOU= ", iou)
-    # print(classification_report(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh_argmax_f1))
-    #
-    # from sklearn.metrics import roc_curve, auc
-    #
-    # # roc(Y, F, thresh=0)
-    # fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-    # area_under_curve = auc(fpr, tpr)
-    # plt.figure(figsize=(8, 8), dpi=300)
-    # plt.plot([0, 1], [0, 1], 'k--')
-    # plt.plot(fpr, tpr, label='AUC = {:.3f}'.format(area_under_curve))
-    # plt.xlabel('False positive rate')
-    # plt.ylabel('True positive rate')
-    # plt.title('ROC curve')
-    # plt.legend(loc='best')
-    # plt.tight_layout()
-    # plt.grid()
-    # plt.show()
+    for k_val, (x, y) in zip(tqdm(range(val_iters)), valGene):
+        f = model.predict(x, batch_size=bs_v)
+        # plt.show()
+        # # print(confusion_matrix(y.reshape(-1,)>0, f.reshape(-1,)>thresh))
 
-    # for kk in range(min(bs_v, 10)):
-    #     fig = plt.figure(figsize=(20, 20))
-    #     # plt.subplots(2,2)
-    #     plt.subplot(221)
-    #     plt.imshow(x[kk, :, :, :])
-    #     plt.title('Input')
-    #     plt.subplot(222)
-    #     plt.imshow(y[kk, :, :, 0], cmap='gray')
-    #     plt.title('GT')
-    #     plt.subplot(223)
-    #     plt.imshow(f[kk, :, :, 0], cmap='gray')
-    #     plt.title('Pred')
-    #     plt.subplot(224)
-    #     plt.imshow((f[kk, :, :, 0] > thresh_argmax_f1), cmap='gray')
-    #     plt.title('Pred thresh')
-    #     fig.tight_layout()
-    #     plt.show()
+        if k_val == 0:
+            X, Y, F = x, y, f
+            thresh_argmax_f1 = 0
+            print(start_path)
+            print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
+
+        else:
+            Y, F = np.concatenate([Y, y], axis=0), np.concatenate([F, f], axis=0)
+
+        # print(k_val)
+
+    # f1_max = 0
+    # for thresh in np.linspace(0, 1, 5):
+    #     f1 = f1_score(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh)
+    #     if f1 > f1_max:
+    #         f1_max = f1
+    #         thresh_argmax_f1 = thresh
+    #     print(thresh)
+    # print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
+
+    thresh_argmax_f1 = 0.5
+    iou = jaccard_score(Y.reshape(-1,) > 0, F.reshape(-1,) > thresh_argmax_f1)
+    print("IOU= ", iou)
+    print(classification_report(Y.reshape(-1,) > 0, F.reshape(-1,) > thresh_argmax_f1))
+
+    from sklearn.metrics import roc_curve, auc
+
+    # roc(Y, F, thresh=0)
+    fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
+    area_under_curve = auc(fpr, tpr)
+    plt.figure(figsize=(8, 8), dpi=300)
+    plt.plot([0, 1], [0, 1], "k--")
+    plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    plt.title("ROC curve")
+    plt.legend(loc="best")
+    plt.tight_layout()
+    plt.grid()
+    plt.show()
+
+    for kk in range(min(bs_v, 10)):
+        fig = plt.figure(figsize=(20, 20))
+        # plt.subplots(2,2)
+        plt.subplot(221)
+        plt.imshow(x[kk, :, :, :])
+        plt.title("Input")
+        plt.subplot(222)
+        plt.imshow(y[kk, :, :, 0], cmap="gray")
+        plt.title("GT")
+        plt.subplot(223)
+        plt.imshow(f[kk, :, :, 0], cmap="gray")
+        plt.title("Pred")
+        plt.subplot(224)
+        plt.imshow((f[kk, :, :, 0] > thresh_argmax_f1), cmap="gray")
+        plt.title("Pred thresh")
+        fig.tight_layout()
+        plt.show()
 
     if mode == "mac":
         num_tp_, num_tn_, num_pred_, num_npred_, num_positive_, num_negative_ = (
@@ -404,3 +409,5 @@ for k in range(3, 100):
             % (num_pred_ / num_all_, num_positive_ / num_all_)
         )
     results = model.predict_generator(testGene, 30, verbose=1)
+
+# %%

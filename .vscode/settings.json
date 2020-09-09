@@ -1,3 +1,20 @@
 {
-    "python.pythonPath": "/Users/cunyuan/anaconda3/envs/pla/bin/python"
+    "python.pythonPath": "/home/cunyuan/anaconda3/envs/k/bin/python",
+    "peacock.remoteColor": "#301a79",
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#4123a3",
+        "activityBar.activeBorder": "#b84927",
+        "activityBar.background": "#4123a3",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#b84927",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "statusBar.background": "#301a79",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#4123a3",
+        "titleBar.activeBackground": "#301a79",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#301a7999",
+        "titleBar.inactiveForeground": "#e7e7e799"
+    }
 }

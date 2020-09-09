@@ -72,6 +72,7 @@ def trainGenerator(
         image_folder,
         mask_folder,
         aug_dict,
+        class_mode = None,
         image_color_mode="rgb",
         mask_color_mode="grayscale",
         image_save_prefix="image",
@@ -91,8 +92,8 @@ def trainGenerator(
     mask_datagen = ImageDataGenerator(**aug_dict)
     image_generator = image_datagen.flow_from_directory(
         train_path,
-        classes=[image_folder],
-        class_mode=None,
+        classes=tuple(image_folder),
+        class_mode=class_mode,
         color_mode=image_color_mode,
         target_size=target_size,
         batch_size=batch_size,
@@ -102,8 +103,8 @@ def trainGenerator(
     )
     mask_generator = mask_datagen.flow_from_directory(
         train_path,
-        classes=[mask_folder],
-        class_mode=None,
+        classes=tuple(mask_folder),
+        class_mode=class_mode,
         color_mode=mask_color_mode,
         target_size=target_size,
         batch_size=batch_size,
