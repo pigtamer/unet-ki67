@@ -101,7 +101,7 @@ cmap_eosin = LinearSegmentedColormap.from_list('cmap_eosin', ['white', 'darkviol
 cmap_dab = LinearSegmentedColormap.from_list('cmap_dab', ['white', 'saddlebrown'])
 
 
-def single_prediction(im_in, label, nuclei, net, net_sizein):
+def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
     W, H = im_in.shape[1], im_in.shape[2]
     if W % net_sizein != 0 or H % net_sizein != 0:
         raise ValueError("")
@@ -119,20 +119,30 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     num_all, num_pred, num_positive, num_tp = 0, 0, 0, 0
     for i in range(w_num):
         for j in range(h_num):
+            if li_mask is not None:
+                li_mask_chip = li_mask[i * net_sizein:(i + 1) * net_sizein,
+                    j * net_sizein:(j + 1) * net_sizein].reshape((1, net_sizein, net_sizein, 1)) / 255
+            else:
+                li_mask_chip = np.ones((1, 256,256,1))
+
             chip = im_in[:, i * net_sizein:(i + 1) * net_sizein,
                    j * net_sizein:(j + 1) * net_sizein,
-                   :]
+                   :].reshape(1, net_sizein, net_sizein, 3)*li_mask_chip
             dchip = label[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
-                    0]
+                    0].reshape(1, net_sizein, net_sizein, 1)*li_mask_chip
             nchip = nuclei[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
-                    0] / 255
-            mask = net.predict(chip)[0, :, :, 0]
+                    0].reshape(1, net_sizein, net_sizein, 1) / 255*li_mask_chip
+
+            mask = net.predict(chip)[0, :, :, 0].reshape(1, net_sizein, net_sizein, 1)*li_mask_chip
+
             iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
             f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
             chip = chip[0, :, :, :]
-
+            nchip = nchip[0, :, :, 0]
+            dchip = dchip[0, :, :, 0]
+            mask = mask[0,:,:,0]
             """
             Morphology regional evaluation
             """
@@ -214,11 +224,11 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     lbi = num_pred / (num_all + 1E-6)
     lbi_true = num_positive / (num_all+1E-6)
     # print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
-    plt.figure(figsize=(6, 6))
-    plt.imshow(res_set);
-    plt.axis('off');
-    plt.title("Region # policy Prec. %3.2f Rec. %3.2f\nLabelling index: [True] %3.2f [Ours] %3.2f" %
-              (pprecision, precall, lbi_true, lbi))
+    # plt.figure(figsize=(6, 6))
+    # plt.imshow(res_set);
+    # plt.axis('off');
+    # plt.title("Region # policy Prec. %3.2f Rec. %3.2f\nLabelling index: [True] %3.2f [Ours] %3.2f" %
+    #           (pprecision, precall, lbi_true, lbi))
 
     iou /= (w_num * h_num)
     f1 /= w_num * h_num
@@ -227,6 +237,16 @@ def single_prediction(im_in, label, nuclei, net, net_sizein):
     res = np.clip(res, 0, 1)
     fig = plt.figure(figsize=(20, 20))
     plt.imshow(res)
+    plt.axis("off")
+    fig.tight_layout()
+    plt.show()
+    fig = plt.figure(figsize=(20, 20))
+    plt.imshow(nuclei[0])
+    plt.axis("off")
+    fig.tight_layout()
+    plt.show()
+    fig = plt.figure(figsize=(20, 20))
+    plt.imshow(im_in[0])
     plt.axis("off")
     fig.tight_layout()
     plt.show()
