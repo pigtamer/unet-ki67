@@ -69,9 +69,9 @@ def adjustData(img, mask, flag_multi_class, num_class):
 def trainGenerator(
         batch_size,
         train_path,
-        image_folder,
-        mask_folder,
-        aug_dict,
+        image_folder = None,
+        mask_folder = None,
+        aug_dict = None,
         class_mode = None,
         image_color_mode="rgb",
         mask_color_mode="grayscale",

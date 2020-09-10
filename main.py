@@ -11,7 +11,10 @@ if mode == "mac":
 import argparse
 from model import *
 from data import *
+from data_kmr import *
+
 from utils import *
+from pathlib import Path
 from color_proc import *
 import segmentation_models as sm
 from segmodel import denseunet, unetxx
@@ -24,6 +27,8 @@ from sklearn.metrics import (
     f1_score,
     jaccard_score,
 )
+
+
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument(
@@ -60,10 +65,12 @@ data_gen_args = dict(
 )
 
 # On server. full annotated data 16040
-train_path = "/home/cunyuan/DATA/ORIG/chipwise/train/"
-val_path = "/home/cunyuan/DATA/ORIG/chipwise/val/"
-test_path = "/home/cunyuan/DATA/test_1024/k/"
-model_dir = "/home/cunyuan/models/"
+HOME_PATH = str(Path.home())
+
+train_path = HOME_PATH +"/4tb/Kimura/DATA/TILES_(2048, 2048)/"
+val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(2048, 2048)/"
+test_path = HOME_PATH + "/DATA/test_1024/k/"
+model_dir = HOME_PATH + "/models/"
 
 if mode == "mac":
     model_dir = "/Users/cunyuan/models/"
@@ -79,7 +86,7 @@ if mode == "mac":
 
 lr = 1e-3
 lrstr = "{:.2e}".format(lr)
-edge_size = 256
+edge_size = 2048
 target_size = (edge_size, edge_size)
 
 test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
@@ -87,8 +94,8 @@ test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
 # test_size = (1536, 1536)
 test_size = (2048, 2048)
 
-bs = 16
-bs_v = 4
+bs = 1
+bs_v = 1
 bs_i = 1
 step_num = 14480 // bs
 
@@ -102,22 +109,35 @@ model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja
 data_name = "kmr7930x8"
 
-trainGene = trainGenerator(
-    bs,
-    train_path=train_path,
-    image_folder=["chips", "masks"],
-    mask_folder=["chips", "masks"],
+folds = folds(l_wsis = [k for k in [
+        "01_14-3768_Ki67_HE",
+        "01_14-7015_Ki67_HE",
+        "01_15-1052_Ki67_HE",
+        "01_15-2502_Ki67_HE",
+        "01_17-5256_Ki67_HE",
+        "01_17-6747_Ki67_HE",
+        "01_17-7885_Ki67_HE",
+        "01_17-7930_Ki67_HE",
+        "01_17-8107_Ki67_HE",
+    ]],
+    k=3)
+
+trainGene = kmrGenerator(
+    dataset_path=train_path,
+    batch_size=bs,
+    image_folder=folds[0][0],
+    mask_folder=folds[0][0],
     aug_dict=data_gen_args,
     save_to_dir=None,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
     target_size=target_size,
 )
-valGene = trainGenerator(
-    bs_v,
-    train_path=val_path,
-    image_folder=["chips"],
-    mask_folder=["masks"],
+valGene = kmrGenerator(
+    dataset_path=val_path,
+    batch_size = bs_v,
+    image_folder=folds[0][1],
+    mask_folder=folds[0][1],
     aug_dict={},
     save_to_dir=None,
     image_color_mode="rgb",
@@ -220,7 +240,18 @@ print(
     "*-" * 20,
     "\n",
 )
-
+#%%
+for hd,k in zip(trainGene, range(10)):
+    im = hd[0][0]
+    dab = hd[1][0]
+    plt.figure(figsize=(8, 4), dpi=300)
+    plt.tight_layout()
+    plt.subplot(121)
+    plt.imshow(im);plt.axis('off')
+    plt.subplot(122)
+    plt.imshow(dab); plt.axis('off')
+    plt.show()
+#%%
 if not flag_test:
     model_checkpoint = ModelCheckpoint(
         model_path,
