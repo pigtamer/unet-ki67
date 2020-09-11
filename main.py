@@ -54,21 +54,22 @@ from sklearn.metrics import (
 # args = parser.parse_args()
 
 data_gen_args = dict(
-    rotation_range=5,
+    rotation_range=180,
     channel_shift_range=0,
     width_shift_range=0.05,
     height_shift_range=0.05,
     shear_range=0.05,
     zoom_range=0.05,
     horizontal_flip=True,
-    fill_mode="nearest",
+    vertical_flip=True,
+    fill_mode="constant",
 )
 
 # On server. full annotated data 16040
 HOME_PATH = str(Path.home())
 
-train_path = HOME_PATH +"/4tb/Kimura/DATA/TILES_(2048, 2048)/"
-val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(2048, 2048)/"
+train_path = HOME_PATH +"/4tb/Kimura/DATA/TILES_(256, 256)/"
+val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
 model_dir = HOME_PATH + "/models/"
 
@@ -86,28 +87,28 @@ if mode == "mac":
 
 lr = 1e-3
 lrstr = "{:.2e}".format(lr)
-edge_size = 2048
+edge_size = 256
 target_size = (edge_size, edge_size)
 
-test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
+# test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
 # test_size = (3328, 3328)
 # test_size = (1536, 1536)
 test_size = (2048, 2048)
 
-bs = 1
+bs = 32
 bs_v = 1
 bs_i = 1
-step_num = 14480 // bs
+step_num = 783872 // bs
 
-checkpoint_period = 10
+checkpoint_period = 1
 flag_test, flag_continue = 0, 0
 flag_multi_gpu = 0
 continue_step = (0, 40)
-num_epoches = 100
+num_epoches = 20
 framework = "k"
 model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja
-data_name = "kmr7930x8"
+data_name = "kmr9x1"
 
 folds = folds(l_wsis = [k for k in [
         "01_14-3768_Ki67_HE",
@@ -250,7 +251,7 @@ for hd,k in zip(trainGene, range(10)):
     plt.imshow(im);plt.axis('off')
     plt.subplot(122)
     plt.imshow(dab); plt.axis('off')
-    plt.show()
+    # plt.show()
 #%%
 if not flag_test:
     model_checkpoint = ModelCheckpoint(
