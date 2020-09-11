@@ -230,7 +230,7 @@ def geneTrainNpy(
         img, mask = adjustData(img, mask, flag_multi_class, num_class)
         image_arr.append(img)
         mask_arr.append(mask)
-    image_arr = np.array(image_arr)  # TODO: 这里有输出范围的隐患
+    image_arr = np.array(image_arr)  #  TODO: 这里有输出范围的隐患
     mask_arr = np.array(mask_arr)
     return image_arr, mask_arr
 

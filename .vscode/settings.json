@@ -1,3 +1,9 @@
 {
-    "python.pythonPath": "/home/cunyuan/anaconda3/envs/k/bin/python"
+    "python.pythonPath": "/Users/cunyuan/anaconda3/envs/pla/bin/python",
+    "python.testing.nosetestArgs": [
+        "."
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": true
 }

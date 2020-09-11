@@ -29,7 +29,6 @@ from sklearn.metrics import (
 )
 
 
-
 # parser = argparse.ArgumentParser()
 # parser.add_argument(
 #     "-e",
@@ -53,21 +52,26 @@ from sklearn.metrics import (
 
 # args = parser.parse_args()
 
+""" 
+! <!> Take care when setting data_gen_args 
+"""
+
 data_gen_args = dict(
-    rotation_range=5,
+    rotation_range=180,
     channel_shift_range=0,
     width_shift_range=0.05,
     height_shift_range=0.05,
     shear_range=0.05,
     zoom_range=0.05,
     horizontal_flip=True,
-    fill_mode="nearest",
+    vertical_flip=True,
+    fill_mode="constant",
 )
 
 # On server. full annotated data 16040
 HOME_PATH = str(Path.home())
 
-train_path = HOME_PATH +"/4tb/Kimura/DATA/TILES_(2048, 2048)/"
+train_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(2048, 2048)/"
 val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(2048, 2048)/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
 model_dir = HOME_PATH + "/models/"
@@ -109,18 +113,23 @@ model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja
 data_name = "kmr7930x8"
 
-folds = folds(l_wsis = [k for k in [
-        "01_14-3768_Ki67_HE",
-        "01_14-7015_Ki67_HE",
-        "01_15-1052_Ki67_HE",
-        "01_15-2502_Ki67_HE",
-        "01_17-5256_Ki67_HE",
-        "01_17-6747_Ki67_HE",
-        "01_17-7885_Ki67_HE",
-        "01_17-7930_Ki67_HE",
-        "01_17-8107_Ki67_HE",
-    ]],
-    k=3)
+folds = folds(
+    l_wsis=[
+        k
+        for k in [
+            "01_14-3768_Ki67_HE",
+            "01_14-7015_Ki67_HE",
+            "01_15-1052_Ki67_HE",
+            "01_15-2502_Ki67_HE",
+            "01_17-5256_Ki67_HE",
+            "01_17-6747_Ki67_HE",
+            "01_17-7885_Ki67_HE",
+            "01_17-7930_Ki67_HE",
+            "01_17-8107_Ki67_HE",
+        ]
+    ],
+    k=3,
+)
 
 trainGene = kmrGenerator(
     dataset_path=train_path,
@@ -135,7 +144,7 @@ trainGene = kmrGenerator(
 )
 valGene = kmrGenerator(
     dataset_path=val_path,
-    batch_size = bs_v,
+    batch_size=bs_v,
     image_folder=folds[0][1],
     mask_folder=folds[0][1],
     aug_dict={},
@@ -241,15 +250,17 @@ print(
     "\n",
 )
 #%%
-for hd,k in zip(trainGene, range(10)):
+for hd, k in zip(trainGene, range(10)):
     im = hd[0][0]
     dab = hd[1][0]
     plt.figure(figsize=(8, 4), dpi=300)
     plt.tight_layout()
     plt.subplot(121)
-    plt.imshow(im);plt.axis('off')
+    plt.imshow(im)
+    plt.axis("off")
     plt.subplot(122)
-    plt.imshow(dab); plt.axis('off')
+    plt.imshow(dab)
+    plt.axis("off")
     plt.show()
 #%%
 if not flag_test:
@@ -442,3 +453,5 @@ for k in range(3, 100):
     results = model.predict_generator(testGene, 30, verbose=1)
 
 # %%
+def test():
+    print("fucking")
