@@ -1,4 +1,4 @@
-from keras import backend as K
+# from keras import backend as K
 # import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ def viewim(im, cmap="gray"):
 
 
 def focal_loss(gamma=2., alpha=.25):
-    import tensorflow as tf
+    # import tensorflow as tf
 
     def focal_loss_fixed(y_true, y_pred):
         pt_1 = tf.where(K.equal(y_true, 1), y_pred, K.ones_like(y_pred))

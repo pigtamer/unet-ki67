@@ -25,16 +25,17 @@ import skimage.io as io
 import skimage.transform as trans
 
 from data import adjustData
+from model import *
 #%%
-mode = "-mac"  # TODO: use argparse instead!!
+# mode = "-mac"  # TODO: use argparse instead!!
 
-if mode == "mac":
-    # use plaidml backend for Mac OS
-    os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+# if mode == "mac":
+#     # use plaidml backend for Mac OS
+#     os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 
-import keras
-import keras.backend as K
-from keras.preprocessing.image import ImageDataGenerator
+# import keras
+# import keras.backend as K
+# from keras.preprocessing.image import ImageDataGenerator
 
 
 """ 
@@ -174,10 +175,10 @@ def kmrGenerator(
     )
 
     dab_generator = dab_datagen.flow_from_directory(
-        dataset_path + "DAB/",
+        dataset_path + "Mask/",
         classes=image_folder,
         class_mode=None,
-        color_mode=image_color_mode,
+        color_mode=mask_color_mode,
         target_size=target_size,
         batch_size=batch_size,
         save_to_dir=save_to_dir,

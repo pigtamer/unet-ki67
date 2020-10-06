@@ -1,5 +1,5 @@
 from __future__ import print_function
-from keras.preprocessing.image import ImageDataGenerator
+
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -61,6 +61,7 @@ def adjustData(img, mask, flag_multi_class, num_class):
     elif np.max(img) > 1:
         img = img / 255
         mask = mask / 255
+        # comment this out if you do regression
         mask[mask > 0.5] = 1
         mask[mask <= 0.5] = 0
     return (img, mask)

@@ -1,14 +1,9 @@
 #%%
 # %matplotlib inline
 
-mode = "-mac"
 
-import os
 
-if mode == "mac":
-    os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
-
-import argparse
+import os,argparse
 from model import *
 from data import *
 from data_kmr import *
@@ -17,8 +12,9 @@ from utils import *
 from pathlib import Path
 from color_proc import *
 import segmentation_models as sm
-from segmodel import denseunet, unetxx
+# from segmodel import denseunet, unetxx
 import time
+from datetime import datetime
 from tqdm import tqdm
 
 from sklearn.metrics import (
@@ -27,8 +23,6 @@ from sklearn.metrics import (
     f1_score,
     jaccard_score,
 )
-
-
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument(
@@ -54,7 +48,7 @@ from sklearn.metrics import (
 # args = parser.parse_args()
 
 data_gen_args = dict(
-    rotation_range=180,
+    rotation_range=360,
     channel_shift_range=0,
     width_shift_range=0.05,
     height_shift_range=0.05,
@@ -68,8 +62,8 @@ data_gen_args = dict(
 # On server. full annotated data 16040
 HOME_PATH = str(Path.home())
 
-train_path = HOME_PATH +"/4tb/Kimura/DATA/TILES_(256, 256)/"
-val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)/"
+train_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.41/"
+val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.41/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
 model_dir = HOME_PATH + "/models/"
 
@@ -96,38 +90,77 @@ target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
 bs = 32
-bs_v = 1
+bs_v = 32
 bs_i = 1
-step_num = 783872 // bs
+step_num = 33614 // bs
+# step_num = 33498 // bs
 
-checkpoint_period = 1
+checkpoint_period = 10
 flag_test, flag_continue = 0, 0
 flag_multi_gpu = 0
-continue_step = (0, 40)
-num_epoches = 20
+continue_step = (0, 0)
+num_epoches = 100
 framework = "k"
-model_name = "unet"
-loss_name = "bceja"  # focalja, bce, bceja, ja
-data_name = "kmr9x1"
+model_name = "res9-unet"
+loss_name = "dice"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr9x1_0.25"
 
-folds = folds(l_wsis = [k for k in [
-        "01_14-3768_Ki67_HE",
-        "01_14-7015_Ki67_HE",
-        "01_15-1052_Ki67_HE",
-        "01_15-2502_Ki67_HE",
-        "01_17-5256_Ki67_HE",
-        "01_17-6747_Ki67_HE",
-        "01_17-7885_Ki67_HE",
-        "01_17-7930_Ki67_HE",
-        "01_17-8107_Ki67_HE",
-    ]],
-    k=3)
+if mode != "mac":
+    logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+file_writer.set_as_default()
 
+
+def lr_schedule(epoch):
+    """
+    Returns a custom learning rate that decreases as epochs progress.
+    """
+    learning_rate = 1E-2
+    if epoch > 1:
+        learning_rate = 1E-3
+    if epoch > 5:
+        learning_rate = 1E-3
+    if epoch > 50:
+        learning_rate = 1E-3
+    if epoch > 100:
+        learning_rate = 1E-4
+    if epoch > 200:
+        learning_rate = 1E-4
+    
+    tf.summary.scalar("learning rate", data=learning_rate, step=epoch)
+    return learning_rate
+
+# def custom_dashboard(epoch, step):
+
+lr_callback = LearningRateScheduler(lr_schedule)
+# step_callback = keras.callbacks.Callback()
+if mode != "mac":
+    tensorboard_callback = TensorBoard(log_dir=logdir)
+
+
+fold = folds(
+    l_wsis=[
+        k + ""
+        for k in [
+            "01_14-3768_Ki67_HE",
+            "01_14-7015_Ki67_HE",
+            "01_15-1052_Ki67_HE",
+            "01_15-2502_Ki67_HE",
+            "01_17-5256_Ki67_HE",
+            "01_17-6747_Ki67_HE",
+            "01_17-7885_Ki67_HE",
+            "01_17-7930_Ki67_HE",
+            "01_17-8107_Ki67_HE",
+        ]
+    ],
+    k=9,
+)
+print(fold[0][0])
 trainGene = kmrGenerator(
     dataset_path=train_path,
     batch_size=bs,
-    image_folder=folds[0][0],
-    mask_folder=folds[0][0],
+    image_folder=fold[0][0],
+    mask_folder=fold[0][0],
     aug_dict=data_gen_args,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -136,9 +169,9 @@ trainGene = kmrGenerator(
 )
 valGene = kmrGenerator(
     dataset_path=val_path,
-    batch_size = bs_v,
-    image_folder=folds[0][1],
-    mask_folder=folds[0][1],
+    batch_size=bs,
+    image_folder=fold[0][1],
+    mask_folder=fold[0][1],
     aug_dict={},
     save_to_dir=None,
     image_color_mode="rgb",
@@ -236,21 +269,23 @@ print(
     "\n",
     "Image size %d" % edge_size,
     "\n",
-    "%d steps per epoch" % step_num,
-    "\n",
+    # "%d steps per epoch" % step_num,
+    # "\n",
     "*-" * 20,
     "\n",
 )
 #%%
-for hd,k in zip(trainGene, range(10)):
+for hd, k in zip(trainGene, range(10)):
     im = hd[0][0]
     dab = hd[1][0]
     plt.figure(figsize=(8, 4), dpi=300)
     plt.tight_layout()
     plt.subplot(121)
-    plt.imshow(im);plt.axis('off')
+    plt.imshow(im)
+    plt.axis("off")
     plt.subplot(122)
-    plt.imshow(dab); plt.axis('off')
+    plt.imshow(dab[:, :, 0])
+    plt.axis("off")
     # plt.show()
 #%%
 if not flag_test:
@@ -266,13 +301,17 @@ if not flag_test:
 
     start = time.time()
 
-    model.fit_generator(
+    training_history = model.fit_generator(
         trainGene,
         validation_data=valGene,
-        validation_steps=10,
+        validation_freq=10,
+        validation_steps=139584 // bs//1000000  + 178,
         steps_per_epoch=step_num,
         epochs=num_epoches,
-        callbacks=[model_checkpoint],
+        initial_epoch=0,
+        callbacks=[model_checkpoint, lr_callback, tensorboard_callback]
+                    if mode != "mac"
+                    else [model_checkpoint, lr_callback],
     )
 
     print(time.time() - start)

@@ -1,24 +1,33 @@
+mode = "-mac"
+
+if mode == "mac":
+    os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+    
 import numpy as np
 import os
 
 import skimage.io as io
 import skimage.transform as trans
 import numpy as np
+
+if mode!="mac":
+    import tensorflow as tf
+    from tensorflow import keras
 from keras.losses import binary_crossentropy
 from keras.utils import multi_gpu_model
 from utils import *
-from keras import losses
+from keras import losses, callbacks
 
 from keras.models import *
 from keras.layers import *
 from keras.optimizers import *
 from keras.utils import plot_model
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
-
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler, TensorBoard
+from keras.preprocessing.image import ImageDataGenerator
 from keras import backend as K
 
 import segmentation_models as sm
-from segmodel import *
+#from segmodel import *
 
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
@@ -89,7 +98,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
     drop5 = Dropout(0.5)(conv5)
 
-    #res5 = resblockn(9, drop5, 1024)
+    res5 = resblockn(9, drop5, 1024)
 
 
     up6 = Conv2D(512, 2, activation='relu', padding='same',
@@ -140,7 +149,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
             model.compile(optimizer=Adam(lr=lr),
                           loss=sm.losses.binary_focal_jaccard_loss, metrics=[sm.metrics.iou_score, 'accuracy'])
     else:
-        model.compile(optimizer=Adam(lr=lr),
+        model.compile(optimizer='adam',
                       loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
 
     # model.summary()
@@ -151,7 +160,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
 model_dict = {
     "unet": unet,
-    "unetxx": unetxx,
-    "unet++": unetxx,
-    "denseunet": denseunet
+    # "unetxx": unetxx,
+    # "unet++": unetxx,
+    # "denseunet": denseunet
 }
