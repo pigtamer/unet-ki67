@@ -1,7 +1,4 @@
-#%%
-# %matplotlib inline
-
-mode = "-mac"
+mode = "mac"
 
 import os
 
@@ -79,11 +76,8 @@ if mode == "mac":
     val_path = "/Users/cunyuan/DATA/chipwise/val/"
     val_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    # index_path = "/Users/cunyuan/DATA/ji1024_orig/val1024/"
-    # index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
-    # index_path="/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
-    # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
-    index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
+    index_path = "/Users/cunyuan/DATA/ji1024_orig/4d/val1024/"
+    index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
 
 lr = 1e-3
 lrstr = "{:.2e}".format(lr)

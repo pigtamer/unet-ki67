@@ -91,6 +91,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
     drop5 = Dropout(0.5)(conv5)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     res5 = resblockn(9, drop5, 1024)
 
 
@@ -103,6 +104,13 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
     up6 = Conv2D(512, 2, activation='relu', padding='same',
                  kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(drop5))
 >>>>>>> 439eb7aa1698603e6e047b410912ffec56977c4b
+=======
+    # res5 = resblockn(9, drop5, 1024)
+
+
+    up6 = Conv2D(512, 2, activation='relu', padding='same',
+                 kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(conv5))
+>>>>>>> afb898a540af8b3aac6dc10739f07175c82dfe05
 
     merge6 = concatenate([drop4, up6], axis=3)
     conv6 = Conv2D(512, 3, activation='relu', padding='same',
