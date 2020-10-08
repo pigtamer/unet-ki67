@@ -10,7 +10,7 @@ from custom_layers import Scale
 
 
 def DenseNet(nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.0, dropout_rate=0.0, weight_decay=1e-4,
-             classes=1000, weights_path=None):
+classes=1000, weights_path=None):
     '''Instantiate the DenseNet 121 architecture,
         # Arguments
             nb_dense_block: number of dense blocks to add to end
@@ -66,7 +66,8 @@ def DenseNet(nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.0, drop
     x, nb_filter = dense_block(x, final_stage, nb_layers[-1], nb_filter, growth_rate, dropout_rate=dropout_rate,
                                weight_decay=weight_decay)
 
-    x = BatchNormalization(epsilon=eps, axis=concat_axis, name='conv' + str(final_stage) + '_blk_bn')(x)
+    x = BatchNormalization(epsilon=eps,
+    axis=concat_axis, name='conv' + str(final_stage) + '_blk_bn')(x)
     x = Scale(axis=concat_axis, name='conv' + str(final_stage) + '_blk_scale')(x)
     x = Activation('relu', name='relu' + str(final_stage) + '_blk')(x)
     x = GlobalAveragePooling2D(name='pool' + str(final_stage))(x)
