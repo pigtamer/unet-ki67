@@ -1,14 +1,11 @@
 #%%
 # %matplotlib inline
 
-mode = "-mac"
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+print(comm.Get_size())
 
-import os
-
-if mode == "mac":
-    os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
-
-import argparse
+import os,argparse
 from model import *
 from data import *
 from data_kmr import *
@@ -17,8 +14,9 @@ from utils import *
 from pathlib import Path
 from color_proc import *
 import segmentation_models as sm
-from segmodel import denseunet, unetxx
+# from segmodel import denseunet, unetxx
 import time
+from datetime import datetime
 from tqdm import tqdm
 
 from sklearn.metrics import (
@@ -27,8 +25,6 @@ from sklearn.metrics import (
     f1_score,
     jaccard_score,
 )
-
-
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument(
@@ -54,12 +50,12 @@ from sklearn.metrics import (
 # args = parser.parse_args()
 
 data_gen_args = dict(
-    rotation_range=180,
+    rotation_range=360,
     channel_shift_range=0,
     width_shift_range=0.05,
     height_shift_range=0.05,
     shear_range=0.05,
-    zoom_range=0.05,
+    zoom_range=0.0,
     horizontal_flip=True,
     vertical_flip=True,
     fill_mode="constant",
@@ -68,11 +64,17 @@ data_gen_args = dict(
 # On server. full annotated data 16040
 HOME_PATH = str(Path.home())
 
-train_path = HOME_PATH +"/4tb/Kimura/DATA/TILES_(256, 256)/"
-val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)/"
+train_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
+val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
 model_dir = HOME_PATH + "/models/"
 
+if mode == "tbm":
+    STG_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
+    train_path = STG_PATH + "/TILES_(256, 256)_0.25/"
+    val_path = STG_PATH + "/TILES_(256, 256)_0.25/"
+    test_path = HOME_PATH + "/DATA/test_1024/k/"
+    model_dir = STG_PATH + "/models/"
 if mode == "mac":
     model_dir = "/Users/cunyuan/models/"
     train_path = "/Users/cunyuan/DATA/chipwise/train/"
@@ -85,7 +87,7 @@ if mode == "mac":
     # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
     index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
 
-lr = 1e-3
+lr = 1e-3; initial_lr = lr*hvd.size()
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
@@ -95,39 +97,80 @@ target_size = (edge_size, edge_size)
 # test_size = (1536, 1536)
 test_size = (2048, 2048)
 
-bs = 32
-bs_v = 1
+bs = 16
+bs_v = 32
 bs_i = 1
-step_num = 783872 // bs
+step_num = 33614 // bs
+step_num = 108051 // bs
+# step_num = 33498 // bs
+verbose = 1 if hvd.rank() == 0 else 0
 
 checkpoint_period = 1
 flag_test, flag_continue = 0, 0
-flag_multi_gpu = 0
-continue_step = (0, 40)
-num_epoches = 20
+flag_multi_gpu = 1
+continue_step = (0, 0)
+num_epoches = 300
 framework = "k"
-model_name = "unet"
-loss_name = "bceja"  # focalja, bce, bceja, ja
-data_name = "kmr9x1"
+model_name = "res9-unet"
+loss_name = "focaldice"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr9x1_0.25"
 
-folds = folds(l_wsis = [k for k in [
-        "01_14-3768_Ki67_HE",
-        "01_14-7015_Ki67_HE",
-        "01_15-1052_Ki67_HE",
-        "01_15-2502_Ki67_HE",
-        "01_17-5256_Ki67_HE",
-        "01_17-6747_Ki67_HE",
-        "01_17-7885_Ki67_HE",
-        "01_17-7930_Ki67_HE",
-        "01_17-8107_Ki67_HE",
-    ]],
-    k=3)
+if mode != "mac":
+    logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+file_writer.set_as_default()
 
+
+def lr_schedule(epoch):
+    """
+    Returns a custom learning rate that decreases as epochs progress.
+    """
+    learning_rate = 1E-2
+    if epoch > 1:
+        learning_rate = 1E-3
+    if epoch > 5:
+        learning_rate = 1E-3
+    if epoch > 50:
+        learning_rate = 1E-3
+    if epoch > 100:
+        learning_rate = 1E-4
+    if epoch > 200:
+        learning_rate = 1E-4
+    
+    tf.summary.scalar("learning rate", data=learning_rate, step=epoch)
+    return learning_rate
+
+# def custom_dashboard(epoch, step):
+
+lr_callback = LearningRateScheduler(lr_schedule)
+# step_callback = keras.callbacks.Callback()
+if mode != "mac":
+    tensorboard_callback = TensorBoard(log_dir=logdir)
+
+
+fold = folds(
+    l_wsis=[
+        k + ""
+        for k in [
+            "01_14-3768_Ki67_HE",
+            "01_14-7015_Ki67_HE",
+            "01_15-1052_Ki67_HE",
+            "01_15-2502_Ki67_HE",
+            "01_17-5256_Ki67_HE",
+            "01_17-6747_Ki67_HE",
+            "01_17-7885_Ki67_HE",
+            "01_17-7930_Ki67_HE",
+            "01_17-8107_Ki67_HE",
+        ]
+    ],
+    k=9,
+)
+print(fold[0][0])
 trainGene = kmrGenerator(
     dataset_path=train_path,
     batch_size=bs,
-    image_folder=folds[0][0],
-    mask_folder=folds[0][0],
+    image_folder=fold[0][0],
+    mask_folder=fold[0][0],
     aug_dict=data_gen_args,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -136,9 +179,9 @@ trainGene = kmrGenerator(
 )
 valGene = kmrGenerator(
     dataset_path=val_path,
-    batch_size = bs_v,
-    image_folder=folds[0][1],
-    mask_folder=folds[0][1],
+    batch_size=bs_v,
+    image_folder=fold[0][1],
+    mask_folder=fold[0][1],
     aug_dict={},
     save_to_dir=None,
     image_color_mode="rgb",
@@ -194,14 +237,15 @@ if flag_continue:
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
 else:
-    model = unet(
-        pretrained_weights=None,
-        input_size=(target_size[0], target_size[1], 3),
-        lr=lr,
-        multi_gpu=flag_multi_gpu,
-        loss=loss_name,
-    )
-    # model = unetxx(lr=lr)
+    # model = unet(
+    #     pretrained_weights=None,
+    #     input_size=(target_size[0], target_size[1], 3),
+    #     lr=lr,
+    #     multi_gpu=flag_multi_gpu,
+    #     loss=loss_name,
+    # )
+    sm.set_framework('tf.keras')
+    model = smunet()
 
 # plot_model(model, to_file="./model.svg")
 """
@@ -215,7 +259,7 @@ print(
     "*-" * 20,
     "\n",
     "Testing" if flag_test else "Training",
-    " on " "MultiGPU" if flag_multi_gpu else "Single GPU",
+    " on " "Multi GPU" if flag_multi_gpu else "Single GPU",
     "\n",
     "New model"
     if not flag_continue
@@ -236,43 +280,80 @@ print(
     "\n",
     "Image size %d" % edge_size,
     "\n",
-    "%d steps per epoch" % step_num,
-    "\n",
+    # "%d steps per epoch" % step_num,
+    # "\n",
     "*-" * 20,
     "\n",
 )
 #%%
-for hd,k in zip(trainGene, range(10)):
-    im = hd[0][0]
-    dab = hd[1][0]
-    plt.figure(figsize=(8, 4), dpi=300)
-    plt.tight_layout()
-    plt.subplot(121)
-    plt.imshow(im);plt.axis('off')
-    plt.subplot(122)
-    plt.imshow(dab); plt.axis('off')
+# for hd, k in zip(trainGene, range(10)):
+#     im = hd[0][0]
+#     dab = hd[1][0]
+#     plt.figure(figsize=(8, 4), dpi=300)
+#     plt.tight_layout()
+#     plt.subplot(121)
+#     plt.imshow(im)
+#     plt.axis("off")
+#     plt.subplot(122)
+#     plt.imshow(dab[:, :, 0])
+#     plt.axis("off")
     # plt.show()
 #%%
+print("============\n"*3,hvd.size(),"\n","============\n"*3,)
 if not flag_test:
     model_checkpoint = ModelCheckpoint(
         model_path,
         monitor="loss",
-        verbose=1,
-        save_best_only=True,
+        verbose=verbose,
+        save_best_only=False,
         save_weights_only=False,
         mode="auto",
         period=checkpoint_period,
     )
 
     start = time.time()
+    callbacks = [
+    # Horovod: broadcast initial variable states from rank 0 to all other processes.
+    # This is necessary to ensure consistent initialization of all workers when
+    # training is started with random weights or restored from a checkpoint.
+    hvd.callbacks.BroadcastGlobalVariablesCallback(0),
 
-    model.fit_generator(
+    # Horovod: average metrics among workers at the end of every epoch.
+    #
+    # Note: This callback must be in the list before the ReduceLROnPlateau,
+    # TensorBoard, or other metrics-based callbacks.
+    hvd.callbacks.MetricAverageCallback(),
+
+    # Horovod: using `lr = 1.0 * hvd.size()` from the very beginning leads to worse final
+    # accuracy. Scale the learning rate `lr = 1.0` ---> `lr = 1.0 * hvd.size()` during
+    # the first five epochs. See https://arxiv.org/abs/1706.02677 for details.
+    hvd.callbacks.LearningRateWarmupCallback(warmup_epochs=5, initial_lr=initial_lr,
+                                             verbose=verbose),
+
+    # Horovod: after the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=5, end_epoch=30, multiplier=1.,
+                                               initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=50, end_epoch=100, multiplier=1, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=100, end_epoch=150, multiplier=1e-1, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=150, multiplier=1e-2, initial_lr=initial_lr),
+    ]
+
+    # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
+    if hvd.rank() == 0:
+        callbacks.append(model_checkpoint)
+        callbacks.append(tensorboard_callback)
+        print(model.summary())
+    training_history = model.fit(
         trainGene,
         validation_data=valGene,
-        validation_steps=10,
-        steps_per_epoch=step_num,
+        validation_freq=1,
+        validation_steps=4*(139584 // bs//1000000  + 633)//bs_v//hvd.size(), # 0.41:178 0.25:633
+        steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
-        callbacks=[model_checkpoint],
+        initial_epoch=0,
+        workers = 4,
+        use_multiprocessing=True,
+        callbacks=callbacks
     )
 
     print(time.time() - start)
