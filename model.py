@@ -32,7 +32,7 @@ import segmentation_models as sm
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
     "ja": sm.losses.jaccard_loss,
-    "focal": focal_loss,
+    "focal": sm.losses.binary_focal_loss,
     "bce":sm.losses.binary_crossentropy,
     "focalja": sm.losses.binary_focal_jaccard_loss,
     "dice": sm.losses.dice_loss,
@@ -102,7 +102,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
 
     up6 = Conv2D(512, 2, activation='relu', padding='same',
-                 kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(drop5))
+                 kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(res5))
 
     merge6 = concatenate([drop4, up6], axis=3)
     conv6 = Conv2D(512, 3, activation='relu', padding='same',
@@ -156,6 +156,29 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
     if pretrained_weights:
         model.load_weights(pretrained_weights)
 
+    return model
+
+def smunet(multi_gpu=4, loss="focal"):
+    model = sm.Unet(backbone_name = 'densenet121',
+                    input_shape=(None, None, 3),
+                    classes=1,
+                    activation='sigmoid',
+                    weights=None,
+                    encoder_weights='imagenet',
+                    encoder_freeze=False,
+                    encoder_features='default',
+                    decoder_block_type='upsampling',
+                    decoder_filters=(256, 128, 64, 32, 16),
+                    decoder_use_batchnorm=True)
+    if multi_gpu:
+        strategy = tf.distribute.MirroredStrategy()
+        with strategy.scope():
+            model = multi_gpu_model(model, gpus=multi_gpu)
+            model.compile(optimizer=opt,
+                    loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
+    else:
+        model.compile(optimizer=opt,
+                    loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
     return model
 
 model_dict = {

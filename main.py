@@ -62,8 +62,8 @@ data_gen_args = dict(
 # On server. full annotated data 16040
 HOME_PATH = str(Path.home())
 
-train_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.41/"
-val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.41/"
+train_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
+val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
 model_dir = HOME_PATH + "/models/"
 
@@ -101,8 +101,8 @@ flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 100
 framework = "k"
-model_name = "res9-unet"
-loss_name = "dice"  # focalja, bce, bceja, ja, dice...
+model_name = "denseunet-121"
+loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 data_name = "kmr9x1_0.25"
 
 if mode != "mac":
@@ -236,6 +236,7 @@ else:
     )
     # model = unetxx(lr=lr)
 
+model = smunet(multi_gpu=4, loss="focal")
 # plot_model(model, to_file="./model.svg")
 """
 Train the model
