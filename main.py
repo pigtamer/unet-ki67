@@ -64,6 +64,7 @@ data_gen_args = dict(
 # On server. full annotated data 16040
 HOME_PATH = str(Path.home())
 
+
 train_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
 val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
@@ -71,8 +72,8 @@ model_dir = HOME_PATH + "/models/"
 
 if mode == "tbm":
     STG_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
-    train_path = STG_PATH + "/TILES_(256, 256)_0.25/"
-    val_path = STG_PATH + "/TILES_(256, 256)_0.25/"
+    train_path = STG_PATH + "/TILES_(256, 256)_0.41/"
+    val_path = STG_PATH + "/TILES_(256, 256)_0.41/"
     test_path = HOME_PATH + "/DATA/test_1024/k/"
     model_dir = STG_PATH + "/models/"
 if mode == "mac":
@@ -87,7 +88,7 @@ if mode == "mac":
     # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
     index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
 
-lr = 1e-3; initial_lr = lr*hvd.size()
+lr = 1e-2; initial_lr = lr*hvd.size()
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
@@ -98,25 +99,35 @@ target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
 bs = 16
-bs_v = 32
+bs_v = 16
 bs_i = 1
-step_num = 33614 // bs
-step_num = 108051 // bs
+step_num = 33614 // bs # 0.41
+# step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
-verbose = 1 if hvd.rank() == 0 else 0
+verbose = 1
 
 checkpoint_period = 1
 flag_test, flag_continue = 0, 0
 flag_multi_gpu = 1
 continue_step = (0, 0)
 num_epoches = 300
-framework = "k"
-model_name = "res9-unet"
+framework = "hvd-tfk"
+model_name = "dense121-unet"
 loss_name = "focaldice"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr9x1_0.25"
+data_name = "kmr9x1(3768)-0.25"
+
+configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.hdf5" % (
+    framework,
+    model_name,
+    data_name,
+    loss_name,
+    edge_size,
+    hvd.size(),
+    lrstr
+    )
 
 if mode != "mac":
-    logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S") + configstring
     file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
 
@@ -124,6 +135,7 @@ file_writer.set_as_default()
 def lr_schedule(epoch):
     """
     Returns a custom learning rate that decreases as epochs progress.
+    # ! This function is ineffective if the learning rate is scheduled in horovod callback
     """
     learning_rate = 1E-2
     if epoch > 1:
@@ -172,10 +184,15 @@ trainGene = kmrGenerator(
     image_folder=fold[0][0],
     mask_folder=fold[0][0],
     aug_dict=data_gen_args,
-    save_to_dir=None,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
+    image_save_prefix="image",
+    mask_save_prefix="mask",
+    flag_multi_class=False,
+    num_class=2,
+    save_to_dir=None,
     target_size=target_size,
+    seed=hvd.rank()
 )
 valGene = kmrGenerator(
     dataset_path=val_path,
@@ -187,6 +204,7 @@ valGene = kmrGenerator(
     image_color_mode="rgb",
     mask_color_mode="grayscale",
     target_size=target_size,
+    seed=hvd.rank()
 )
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
 
@@ -245,7 +263,7 @@ else:
     #     loss=loss_name,
     # )
     sm.set_framework('tf.keras')
-    model = smunet()
+    model = smunet(loss=loss_name)
 
 # plot_model(model, to_file="./model.svg")
 """
@@ -331,18 +349,18 @@ if not flag_test:
                                              verbose=verbose),
 
     # Horovod: after the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=5, end_epoch=30, multiplier=1.,
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=5, end_epoch=10, multiplier=1.,
                                                initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=50, end_epoch=100, multiplier=1, initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=100, end_epoch=150, multiplier=1e-1, initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=150, multiplier=1e-2, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=10, end_epoch=50, multiplier=1e-1, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=50, end_epoch=100, multiplier=1e-2, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=100, multiplier=1e-3, initial_lr=initial_lr),
     ]
 
     # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
     if hvd.rank() == 0:
         callbacks.append(model_checkpoint)
         callbacks.append(tensorboard_callback)
-        print(model.summary())
+    # print(model.summary())
     training_history = model.fit(
         trainGene,
         validation_data=valGene,
@@ -351,7 +369,7 @@ if not flag_test:
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
         initial_epoch=0,
-        workers = 4,
+        workers = 16,
         use_multiprocessing=True,
         callbacks=callbacks
     )
