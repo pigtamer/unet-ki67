@@ -1,4 +1,4 @@
-mode = "-mac"
+mode = "tbm"
 
 if mode == "mac":
     os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"

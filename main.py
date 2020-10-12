@@ -67,6 +67,12 @@ val_path = HOME_PATH + "/4tb/Kimura/DATA/TILES_(256, 256)_0.25/"
 test_path = HOME_PATH + "/DATA/test_1024/k/"
 model_dir = HOME_PATH + "/models/"
 
+if mode == "tbm":
+    STG_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
+    train_path = STG_PATH + "/TILES_(256, 256)_0.41/"
+    val_path = STG_PATH + "/TILES_(256, 256)_0.41/"
+    test_path = HOME_PATH + "/DATA/test_1024/k/"
+    model_dir = STG_PATH + "/models/"
 if mode == "mac":
     model_dir = "/Users/cunyuan/models/"
     train_path = "/Users/cunyuan/DATA/chipwise/train/"
@@ -310,6 +316,7 @@ if not flag_test:
         steps_per_epoch=step_num,
         epochs=num_epoches,
         initial_epoch=0,
+        use_multiprocessing=True,
         callbacks=[model_checkpoint, lr_callback, tensorboard_callback]
                     if mode != "mac"
                     else [model_checkpoint, lr_callback],
