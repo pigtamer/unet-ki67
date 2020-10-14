@@ -10,21 +10,25 @@ import skimage.io as io
 import skimage.transform as trans
 import numpy as np
 
+import skimage.io as io
+import skimage.transform as trans
+import numpy as np
+
 if mode!="mac":
     import tensorflow as tf
     from tensorflow import keras
-from keras.losses import binary_crossentropy
-from keras.utils import multi_gpu_model
+from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras.utils import multi_gpu_model
 from utils import *
-from keras import losses, callbacks
+from tensorflow.keras import losses, callbacks
 
-from keras.models import *
-from keras.layers import *
-from keras.optimizers import *
-from keras.utils import plot_model
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler, TensorBoard
-from keras.preprocessing.image import ImageDataGenerator
-from keras import backend as K
+from tensorflow.keras.models import *
+from tensorflow.keras.layers import *
+from tensorflow.keras.optimizers import *
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, TensorBoard
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import backend as K
 
 import segmentation_models as sm
 #from segmodel import *
@@ -158,25 +162,36 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
     return model
 
-def smunet(multi_gpu=4, loss="focal"):
-    model = sm.Unet(backbone_name = 'densenet121',
-                    input_shape=(None, None, 3),
-                    classes=1,
-                    activation='sigmoid',
-                    weights=None,
-                    encoder_weights='imagenet',
-                    encoder_freeze=False,
-                    encoder_features='default',
-                    decoder_block_type='upsampling',
-                    decoder_filters=(256, 128, 64, 32, 16),
-                    decoder_use_batchnorm=True)
+def smunet(multi_gpu=4, loss="focal", opt="adam"):
     if multi_gpu:
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
+            model = sm.Unet(backbone_name = 'densenet121',
+                input_shape=(None, None, 3),
+                classes=1,
+                activation='sigmoid',
+                weights=None,
+                encoder_weights='imagenet',
+                encoder_freeze=False,
+                encoder_features='default',
+                decoder_block_type='upsampling',
+                decoder_filters=(256, 128, 64, 32, 16),
+                decoder_use_batchnorm=True)
             model = multi_gpu_model(model, gpus=multi_gpu)
             model.compile(optimizer=opt,
                     loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
     else:
+        model = sm.Unet(backbone_name = 'densenet121',
+            input_shape=(None, None, 3),
+            classes=1,
+            activation='sigmoid',
+            weights=None,
+            encoder_weights='imagenet',
+            encoder_freeze=False,
+            encoder_features='default',
+            decoder_block_type='upsampling',
+            decoder_filters=(256, 128, 64, 32, 16),
+            decoder_use_batchnorm=True)
         model.compile(optimizer=opt,
                     loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
     return model

@@ -242,7 +242,8 @@ else:
     )
     # model = unetxx(lr=lr)
 
-model = smunet(multi_gpu=4, loss="focal")
+sm.set_framework('tf.keras')
+model = smunet(multi_gpu=4, loss=loss_name)
 # plot_model(model, to_file="./model.svg")
 """
 Train the model
