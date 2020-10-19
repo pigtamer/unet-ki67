@@ -95,15 +95,15 @@ def folds(l_wsis=None, k=5):
         [type]: [description]
 
     l_wsis = [
-        "01_14-3768_Ki67_HE",
-        "01_14-7015_Ki67_HE",
-        "01_15-1052_Ki67_HE",
-        "01_15-2502_Ki67_HE",
-        "01_17-5256_Ki67_HE",
+        "01_15-1052_Ki67_HE",   #   1   
+        "01_14-7015_Ki67_HE",      
+        "01_14-3768_Ki67_HE",   
+        "01_17-5256_Ki67_HE",   #   2
         "01_17-6747_Ki67_HE",
+        "01_17-8107_Ki67_HE",
+        "01_15-2502_Ki67_HE",   #   3
         "01_17-7885_Ki67_HE",
         "01_17-7930_Ki67_HE",
-        "01_17-8107_Ki67_HE",
     ] """
 
     def create_divides(l, k):
@@ -194,3 +194,67 @@ def kmrGenerator(
 #%%
 # * 2. Cross validation
 # %%
+# * 3. Tf.data as input pipeline
+def load_kmr_tfdata(dataset_path,
+                    wsi_ids,
+                    stains):
+    def parse_image(file_path):
+        # convert the path to a list of path components
+        parts = tf.strings.split(file_path, os.path.sep)
+        class_names = np.array(os.listdir(dataset_path + '/train'))
+        # The second to last is the class-directory
+        label = parts[-2] == class_names
+        # load the raw data from the file as a string
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
+        img = tf.image.decode_jpeg(img, channels=3)
+        # Use `convert_image_dtype` to convert to floats in the [0,1] range
+        img = tf.image.convert_image_dtype(img, tf.float32)
+        # resize the image to the desired size.
+        img = tf.image.resize(img, [img_dims[0], img_dims[1]])
+        return img, label
+
+    def prepare_for_training(ds, cache=True, shuffle_buffer_size=1000):
+        # If a small dataset, only load it once, and keep it in memory.
+        # use `.cache(filename)` to cache preprocessing work for datasets
+        # that don't fit in memory.
+        if cache:
+            if isinstance(cache, str):
+                ds = ds.cache(cache)
+            else:
+                ds = ds.cache()
+        ds = ds.shuffle(buffer_size=shuffle_buffer_size)
+        # Repeat forever
+        ds = ds.repeat()
+        ds = ds.batch(batch_size)
+        # `prefetch` lets the dataset fetch batches in the background
+        # while the model is training.
+        ds = ds.prefetch(buffer_size=AUTOTUNE)
+        return ds
+
+    data_generator = {}
+    for staintype in stains:
+        dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi for wsi in wsi_ids + "Tiles/Tumor/*/*"]
+        list_ds = tf.data.Dataset.list_files(dir_pattern)
+        AUTOTUNE = tf.data.experimental.AUTOTUNE
+        # Set `num_parallel_calls` so that multiple images are
+        # processed in parallel
+        # labeled_ds = list_ds.map(
+        #     parse_image, num_parallel_calls=AUTOTUNE)
+        # # cache = True, False, './file_name'
+        # # If the dataset doesn't fit in memory use a cache file,
+        # # eg. cache='./data.tfcache'
+        # data_generator[stains] = prepare_for_training(
+        #     labeled_ds, cache='./data.tfcache')
+
+    return data_generator
+
+load_kmr_tfdata("/gs/hs0/tga-yamaguchi.m/ji", [
+        ["01_15-1052_Ki67_HE",   #   1   
+        "01_14-7015_Ki67_HE",      
+        "01_14-3768_Ki67_HE",   
+        "01_17-5256_Ki67_HE",   #   2
+        "01_17-6747_Ki67_HE",
+        "01_17-8107_Ki67_HE",],
+        ["HE",
+        "DAB"])
