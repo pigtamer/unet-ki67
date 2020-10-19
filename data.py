@@ -64,6 +64,10 @@ def adjustData(img, mask, flag_multi_class, num_class):
         # comment this out if you do regression
         mask[mask > 0.5] = 1
         mask[mask <= 0.5] = 0
+    if img.shape[-1] >=3:
+        img = img[:,:,:,:3]
+    if mask.shape[-1] >=3:
+        mask = np.expand_dims(mask[:,:,:,0], -1)
     return (img, mask)
 
 

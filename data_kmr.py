@@ -193,22 +193,32 @@ def kmrGenerator(
 
 #%%
 # * 2. Cross validation
-# %%
-# * 3. Tf.data as input pipeline
+
 # %%
 # * 3. Tf.data as input pipeline
 def load_kmr_tfdata(dataset_path,
-                    wsi_ids,
-                    stains):
+                    batch_size=4,
+                    wsi_ids=None,
+                    stains=["HE", "Mask"],
+                    aug_dict=None,
+                    image_color_mode="rgb",
+                    mask_color_mode="grayscale",
+                    image_save_prefix="image",
+                    mask_save_prefix="mask",
+                    flag_multi_class=False,
+                    num_class=2,
+                    save_to_dir=None,
+                    target_size=(256, 256),
+                    seed=1,
+                    ) -> tuple:
     def parse_image(file_path):
-        img = tf.io.read_file(file_path)
-        # convert the compressed string to a 3D uint8 tensor
-        img = tfio.experimental.image.decode_tiff(img)
-        # Use `convert_image_dtype` to convert to floats in the [0,1] range
-        img = tf.image.convert_image_dtype(img, tf.float32)
-        # resize the image to the desired size.
-        # img = tf.image.resize(img, [img_dims[0], img_dims[1]])
-        return img
+            img = tf.io.read_file(file_path)
+            # convert the compressed string to a 3D uint8 tensor
+            img = tfio.experimental.image.decode_tiff(img)
+            img = tf.image.convert_image_dtype(img, tf.float32)
+            img = tf.image.resize(img, [target_size[0], target_size[1]])
+            # resize the image to the desired size.
+            return img
 
     def prepare_for_training(ds, cache=True, shuffle_buffer_size=1000, batch_size=32):
         # If a small dataset, only load it once, and keep it in memory.
@@ -232,20 +242,21 @@ def load_kmr_tfdata(dataset_path,
     data_generator = {}
     for staintype in stains:
         dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi +  
-                       "*/Tiles/Tumor/*/*" for wsi in wsi_ids ]
+                    "*/Tiles/Tumor/*/*" for wsi in wsi_ids ]
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=114514)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
         # processed in parallel
-        labeled_ds = list_ds.map(
-            parse_image, num_parallel_calls=AUTOTUNE)
+        labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
         # cache = True, False, './file_name'
         # If the dataset doesn't fit in memory use a cache file,
         # eg. cache='./data.tfcache'
         data_generator[staintype] = prepare_for_training(
-            labeled_ds, cache='../data_%s.tfcache%9.3f'%(staintype, 1E10*np.random.rand()))
-
-    return zip(data_generator["HE"],data_generator["Mask"])
+            labeled_ds, cache='/gs/hs0/tga-yamaguchi.m/ji/data_%s.tfcache%9.3f'%(staintype, 1E10*np.random.rand()))
+    train_generator = zip(data_generator["HE"],data_generator["Mask"])
+    for (img, mask) in train_generator:
+        img, mask = adjustData(img, mask, flag_multi_class, num_class)
+        yield (img, mask)
 
 # train_gen = load_kmr_tfdata(
 #         "/home/cunyuan/4tb/Kimura/DATA/TILES_(256, 256)_0.41",

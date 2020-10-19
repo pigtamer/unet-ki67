@@ -72,8 +72,8 @@ model_dir = HOME_PATH + "/models/"
 
 if mode == "tbm":
     STG_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
-    train_path = STG_PATH + "/TILES_(256, 256)_0.41/"
-    val_path = STG_PATH + "/TILES_(256, 256)_0.41/"
+    train_path = STG_PATH + "/TILES_(256, 256)_0.25/"
+    val_path = STG_PATH + "/TILES_(256, 256)_0.25/"
     test_path = HOME_PATH + "/DATA/test_1024/k/"
     model_dir = STG_PATH + "/models/"
 if mode == "mac":
@@ -101,9 +101,10 @@ test_size = (2048, 2048)
 bs = 16
 bs_v = 16
 bs_i = 1
-step_num = 33614 // bs # 0.41
-# step_num = 108051 // bs # 0.25
+# step_num = 33614 // bs # 0.41
+step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
+# step_num = 585891 // bs # all tumor
 verbose = 1
 
 checkpoint_period = 1
@@ -127,7 +128,7 @@ configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.hdf5" % (
     )
 
 if mode != "mac":
-    logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S") + configstring
+    logdir = "/gs/hs0/tga-yamaguchi.m/ji/logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S") + configstring
     file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
 
@@ -164,25 +165,24 @@ fold = folds(
     l_wsis=[
         k + ""
         for k in [
-            "01_14-3768_Ki67_HE",
-            "01_14-7015_Ki67_HE",
-            "01_15-1052_Ki67_HE",
-            "01_15-2502_Ki67_HE",
-            "01_17-5256_Ki67_HE",
-            "01_17-6747_Ki67_HE",
-            "01_17-7885_Ki67_HE",
-            "01_17-7930_Ki67_HE",
-            "01_17-8107_Ki67_HE",
+            "01_14-3768_Ki67",
+            "01_14-7015_Ki67",
+            "01_15-1052_Ki67",
+            "01_15-2502_Ki67",
+            "01_17-5256_Ki67",
+            "01_17-6747_Ki67",
+            "01_17-7885_Ki67",
+            "01_17-7930_Ki67",
+            "01_17-8107_Ki67",
         ]
     ],
     k=9,
 )
 print(fold[0][0])
-trainGene = kmrGenerator(
-    dataset_path=train_path,
+trainGene = load_kmr_tfdata(
+    dataset_path = train_path,
     batch_size=bs,
-    image_folder=fold[0][0],
-    mask_folder=fold[0][0],
+    wsi_ids=fold[0][0],
     aug_dict=data_gen_args,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
@@ -194,11 +194,10 @@ trainGene = kmrGenerator(
     target_size=target_size,
     seed=hvd.rank()
 )
-valGene = kmrGenerator(
+valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    image_folder=fold[0][1],
-    mask_folder=fold[0][1],
+    wsi_ids=fold[0][1],
     aug_dict={},
     save_to_dir=None,
     image_color_mode="rgb",
@@ -357,9 +356,9 @@ if not flag_test:
     ]
 
     # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
-    if hvd.rank() == 0:
-        callbacks.append(model_checkpoint)
-        callbacks.append(tensorboard_callback)
+    # if hvd.rank() == 0:
+    callbacks.append(model_checkpoint)
+    callbacks.append(tensorboard_callback)
     # print(model.summary())
     training_history = model.fit(
         trainGene,
@@ -369,8 +368,8 @@ if not flag_test:
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
         initial_epoch=0,
-        workers = 16,
-        use_multiprocessing=True,
+        # workers = 4,
+        # use_multiprocessing=True,
         callbacks=callbacks
     )
 

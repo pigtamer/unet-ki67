@@ -127,7 +127,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
 
         up6 = Conv2D(512, 2, activation='relu', padding='same',
-                    kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(drop5))
+                    kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(res5))
 
         merge6 = concatenate([drop4, up6], axis=3)
         conv6 = Conv2D(512, 3, activation='relu', padding='same',
