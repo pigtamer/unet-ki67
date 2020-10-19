@@ -18,7 +18,7 @@ from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.utils import multi_gpu_model
 from utils import *
 from tensorflow.keras import losses, callbacks
-
+import tensorflow_io as tfio
 from tensorflow.keras.models import *
 from tensorflow.keras.layers import *
 from tensorflow.keras.optimizers import *

@@ -195,26 +195,22 @@ def kmrGenerator(
 # * 2. Cross validation
 # %%
 # * 3. Tf.data as input pipeline
+# %%
+# * 3. Tf.data as input pipeline
 def load_kmr_tfdata(dataset_path,
                     wsi_ids,
                     stains):
     def parse_image(file_path):
-        # convert the path to a list of path components
-        parts = tf.strings.split(file_path, os.path.sep)
-        class_names = np.array(os.listdir(dataset_path + '/train'))
-        # The second to last is the class-directory
-        label = parts[-2] == class_names
-        # load the raw data from the file as a string
         img = tf.io.read_file(file_path)
         # convert the compressed string to a 3D uint8 tensor
-        img = tf.image.decode_jpeg(img, channels=3)
+        img = tfio.experimental.image.decode_tiff(img)
         # Use `convert_image_dtype` to convert to floats in the [0,1] range
         img = tf.image.convert_image_dtype(img, tf.float32)
         # resize the image to the desired size.
-        img = tf.image.resize(img, [img_dims[0], img_dims[1]])
-        return img, label
+        # img = tf.image.resize(img, [img_dims[0], img_dims[1]])
+        return img
 
-    def prepare_for_training(ds, cache=True, shuffle_buffer_size=1000):
+    def prepare_for_training(ds, cache=True, shuffle_buffer_size=1000, batch_size=32):
         # If a small dataset, only load it once, and keep it in memory.
         # use `.cache(filename)` to cache preprocessing work for datasets
         # that don't fit in memory.
@@ -223,7 +219,8 @@ def load_kmr_tfdata(dataset_path,
                 ds = ds.cache(cache)
             else:
                 ds = ds.cache()
-        ds = ds.shuffle(buffer_size=shuffle_buffer_size)
+        ds = ds.shuffle(buffer_size=shuffle_buffer_size, seed=1, 
+                        reshuffle_each_iteration=False)
         # Repeat forever
         ds = ds.repeat()
         ds = ds.batch(batch_size)
@@ -234,27 +231,33 @@ def load_kmr_tfdata(dataset_path,
 
     data_generator = {}
     for staintype in stains:
-        dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi for wsi in wsi_ids + "Tiles/Tumor/*/*"]
-        list_ds = tf.data.Dataset.list_files(dir_pattern)
+        dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi +  
+                       "*/Tiles/Tumor/*/*" for wsi in wsi_ids ]
+        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=114514)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
         # processed in parallel
-        # labeled_ds = list_ds.map(
-        #     parse_image, num_parallel_calls=AUTOTUNE)
-        # # cache = True, False, './file_name'
-        # # If the dataset doesn't fit in memory use a cache file,
-        # # eg. cache='./data.tfcache'
-        # data_generator[stains] = prepare_for_training(
-        #     labeled_ds, cache='./data.tfcache')
+        labeled_ds = list_ds.map(
+            parse_image, num_parallel_calls=AUTOTUNE)
+        # cache = True, False, './file_name'
+        # If the dataset doesn't fit in memory use a cache file,
+        # eg. cache='./data.tfcache'
+        data_generator[staintype] = prepare_for_training(
+            labeled_ds, cache='../data_%s.tfcache%9.3f'%(staintype, 1E10*np.random.rand()))
 
-    return data_generator
+    return zip(data_generator["HE"],data_generator["Mask"])
 
-load_kmr_tfdata("/gs/hs0/tga-yamaguchi.m/ji", [
-        ["01_15-1052_Ki67_HE",   #   1   
-        "01_14-7015_Ki67_HE",      
-        "01_14-3768_Ki67_HE",   
-        "01_17-5256_Ki67_HE",   #   2
-        "01_17-6747_Ki67_HE",
-        "01_17-8107_Ki67_HE",],
-        ["HE",
-        "DAB"])
+# train_gen = load_kmr_tfdata(
+#         "/home/cunyuan/4tb/Kimura/DATA/TILES_(256, 256)_0.41",
+#         ["01_15-1052_Ki67",   #   1   
+#         "01_14-7015_Ki67",      
+#         "01_14-3768_Ki67",   
+#         "01_17-5256_Ki67",   #   2
+#         "01_17-6747_Ki67",
+#         "01_17-8107_Ki67",],
+#         ["IHC",
+#         "Mask"])
+
+# for img_pairs in train_gen:
+#     plt.figure(); plt.subplot(121);plt.imshow(img_pairs[1][0,:,:,:4])
+#     plt.subplot(122);plt.imshow(img_pairs[0][0,:,:,:4]);plt.show()
