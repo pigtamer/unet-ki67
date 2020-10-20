@@ -197,7 +197,7 @@ def kmrGenerator(
 # %%
 # * 3. Tf.data as input pipeline
 def load_kmr_tfdata(dataset_path,
-                    batch_size=4,
+                    batch_size=16,
                     wsi_ids=None,
                     stains=["HE", "Mask"],
                     aug_dict=None,
@@ -210,6 +210,8 @@ def load_kmr_tfdata(dataset_path,
                     save_to_dir=None,
                     target_size=(256, 256),
                     seed=1,
+                    cache = None,
+                    shuffle_buffer_size=128
                     ) -> tuple:
     def parse_image(file_path):
             img = tf.io.read_file(file_path)
@@ -220,7 +222,8 @@ def load_kmr_tfdata(dataset_path,
             # resize the image to the desired size.
             return img
 
-    def prepare_for_training(ds, cache=True, shuffle_buffer_size=1000, batch_size=32):
+    def prepare_for_training(ds, cache=cache, 
+                            shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size):
         # If a small dataset, only load it once, and keep it in memory.
         # use `.cache(filename)` to cache preprocessing work for datasets
         # that don't fit in memory.
@@ -229,7 +232,7 @@ def load_kmr_tfdata(dataset_path,
                 ds = ds.cache(cache)
             else:
                 ds = ds.cache()
-        ds = ds.shuffle(buffer_size=shuffle_buffer_size, seed=1, 
+        ds = ds.shuffle(buffer_size=shuffle_buffer_size, seed=seed, 
                         reshuffle_each_iteration=False)
         # Repeat forever
         ds = ds.repeat()
@@ -243,7 +246,7 @@ def load_kmr_tfdata(dataset_path,
     for staintype in stains:
         dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi +  
                     "*/Tiles/Tumor/*/*" for wsi in wsi_ids ]
-        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=114514)
+        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
         # processed in parallel
@@ -252,7 +255,8 @@ def load_kmr_tfdata(dataset_path,
         # If the dataset doesn't fit in memory use a cache file,
         # eg. cache='./data.tfcache'
         data_generator[staintype] = prepare_for_training(
-            labeled_ds, cache='/gs/hs0/tga-yamaguchi.m/ji/data_%s.tfcache%9.3f'%(staintype, 1E10*np.random.rand()))
+            labeled_ds, cache = (cache + '_%s_%d.tfcache'%(staintype, 1E10*np.random.rand()))
+            if isinstance(cache, str) else cache)
     train_generator = zip(data_generator["HE"],data_generator["Mask"])
     for (img, mask) in train_generator:
         img, mask = adjustData(img, mask, flag_multi_class, num_class)

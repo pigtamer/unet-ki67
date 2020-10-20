@@ -101,8 +101,8 @@ test_size = (2048, 2048)
 bs = 16
 bs_v = 16
 bs_i = 1
-# step_num = 33614 // bs # 0.41
-step_num = 108051 // bs # 0.25
+step_num = 33614 // 10 // bs # 0.41
+# step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
 verbose = 1
@@ -179,6 +179,7 @@ fold = folds(
     k=9,
 )
 print(fold[0][0])
+print(fold[0][1])
 trainGene = load_kmr_tfdata(
     dataset_path = train_path,
     batch_size=bs,
@@ -192,6 +193,9 @@ trainGene = load_kmr_tfdata(
     num_class=2,
     save_to_dir=None,
     target_size=target_size,
+    # cache='/gs/hs0/tga-yamaguchi.m/ji/train',
+    cache=False,
+    shuffle_buffer_size=128,
     seed=hvd.rank()
 )
 valGene = load_kmr_tfdata(
@@ -203,6 +207,9 @@ valGene = load_kmr_tfdata(
     image_color_mode="rgb",
     mask_color_mode="grayscale",
     target_size=target_size,
+    # cache='/gs/hs0/tga-yamaguchi.m/ji/val',
+    cache=False,
+    shuffle_buffer_size=1,
     seed=hvd.rank()
 )
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
@@ -363,13 +370,11 @@ if not flag_test:
     training_history = model.fit(
         trainGene,
         validation_data=valGene,
-        validation_freq=1,
-        validation_steps=4*(139584 // bs//1000000  + 633)//bs_v//hvd.size(), # 0.41:178 0.25:633
+        validation_freq=20,
+        validation_steps=1, # 0.41:178 0.25:633
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
         initial_epoch=0,
-        # workers = 4,
-        # use_multiprocessing=True,
         callbacks=callbacks
     )
 
