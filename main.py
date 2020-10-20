@@ -88,7 +88,9 @@ if mode == "mac":
     # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
     index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
 
-lr = 1e-3; initial_lr = lr*hvd.size()
+lr = 1e-3
+initial_lr = lr*hvd.size()
+# initial_lr = lr*hvd.size()
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
@@ -115,8 +117,8 @@ continue_step = (0, 0)
 num_epoches = 300
 framework = "hvd-tfk"
 model_name = "dense121-unet"
-loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr-G1-3x1"
+loss_name = "focaldice"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr-G1-3x2"
 
 configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.tf" % (
     framework,
@@ -166,15 +168,15 @@ fold = folds(
     # l_wsis=[
     #     k + ""
     #     for k in [
-    #         "01_14-3768_Ki67",
+    #         "01_14-3768_Ki67", #1
     #         "01_14-7015_Ki67",
     #         "01_15-1052_Ki67",
-    #         "01_15-2502_Ki67",
-    #         "01_17-5256_Ki67",
+    #         "01_17-5256_Ki67", #2
     #         "01_17-6747_Ki67",
+    #         "01_17-8107_Ki67",
+    #         "01_15-2502_Ki67", #3
     #         "01_17-7885_Ki67",
     #         "01_17-7930_Ki67",
-    #         "01_17-8107_Ki67",
     #     ]
     # ],
     # k=9,
@@ -188,12 +190,12 @@ fold = folds(
     ],
     k=3,
 )
-print(fold[0][0])
-print(fold[0][1])
+print(fold[1][0])
+print(fold[1][1])
 trainGene = load_kmr_tfdata(
     dataset_path = train_path,
     batch_size=bs,
-    wsi_ids=fold[0][0],
+    wsi_ids=fold[1][0],
     aug=True,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
@@ -211,7 +213,7 @@ trainGene = load_kmr_tfdata(
 valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    wsi_ids=fold[0][1],
+    wsi_ids=fold[1][1],
     aug=False,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -342,7 +344,7 @@ if not flag_test:
         save_best_only=False,
         save_weights_only=False,
         mode="auto",
-        save_freq=checkpoint_period*step_num,
+        save_freq=checkpoint_period*step_num//hvd.size(),
     )
 
     start = time.time()
