@@ -72,8 +72,8 @@ model_dir = HOME_PATH + "/models/"
 
 if mode == "tbm":
     STG_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
-    train_path = STG_PATH + "/TILES_(256, 256)_0.41/"
-    val_path = STG_PATH + "/TILES_(256, 256)_0.41/"
+    train_path = STG_PATH + "/TILES_(256, 256)/"
+    val_path = STG_PATH + "/TILES_(256, 256)/"
     test_path = HOME_PATH + "/DATA/test_1024/k/"
     model_dir = STG_PATH + "/models/"
 if mode == "mac":
@@ -88,7 +88,7 @@ if mode == "mac":
     # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
     index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
 
-lr = 1e-2; initial_lr = lr*hvd.size()
+lr = 1e-3; initial_lr = lr*hvd.size()
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
@@ -104,18 +104,19 @@ bs_i = 1
 step_num = 33614 // bs # 0.41
 # step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
-# step_num = 585891 // bs # all tumor
+step_num = 585891 // bs # all tumor
+step_num = 162721 // bs # G1 tumor
 verbose = 1
 
-checkpoint_period = 10
+checkpoint_period = 5
 flag_test, flag_continue = 0, 0
 flag_multi_gpu = 1
 continue_step = (0, 0)
 num_epoches = 300
 framework = "hvd-tfk"
 model_name = "dense121-unet"
-loss_name = "focaldice"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr9x1(3768)-0.25"
+loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr-G1-3x1"
 
 configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.tf" % (
     framework,
@@ -162,21 +163,30 @@ if mode != "mac":
 
 
 fold = folds(
+    # l_wsis=[
+    #     k + ""
+    #     for k in [
+    #         "01_14-3768_Ki67",
+    #         "01_14-7015_Ki67",
+    #         "01_15-1052_Ki67",
+    #         "01_15-2502_Ki67",
+    #         "01_17-5256_Ki67",
+    #         "01_17-6747_Ki67",
+    #         "01_17-7885_Ki67",
+    #         "01_17-7930_Ki67",
+    #         "01_17-8107_Ki67",
+    #     ]
+    # ],
+    # k=9,
     l_wsis=[
-        k + ""
-        for k in [
-            "01_14-3768_Ki67",
-            "01_14-7015_Ki67",
-            "01_15-1052_Ki67",
-            "01_15-2502_Ki67",
-            "01_17-5256_Ki67",
-            "01_17-6747_Ki67",
-            "01_17-7885_Ki67",
-            "01_17-7930_Ki67",
-            "01_17-8107_Ki67",
-        ]
+    k + ""
+    for k in [
+        "01_14-3768_Ki67",
+        "01_14-7015_Ki67",
+        "01_15-1052_Ki67",
+    ]
     ],
-    k=9,
+    k=3,
 )
 print(fold[0][0])
 print(fold[0][1])
@@ -332,7 +342,7 @@ if not flag_test:
         save_best_only=False,
         save_weights_only=False,
         mode="auto",
-        period=checkpoint_period,
+        save_freq=checkpoint_period,
     )
 
     start = time.time()
@@ -357,9 +367,9 @@ if not flag_test:
     # Horovod: after the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
     hvd.callbacks.LearningRateScheduleCallback(start_epoch=5, end_epoch=10, multiplier=1.,
                                                initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=10, end_epoch=50, multiplier=1e-1, initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=50, end_epoch=100, multiplier=1e-2, initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=100, multiplier=1e-3, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=10, end_epoch=50, multiplier=1, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=50, end_epoch=200, multiplier=1, initial_lr=initial_lr),
+    hvd.callbacks.LearningRateScheduleCallback(start_epoch=200, multiplier=1e-1, initial_lr=initial_lr),
     ]
 
     # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
@@ -370,7 +380,7 @@ if not flag_test:
     training_history = model.fit(
         trainGene,
         validation_data=valGene,
-        validation_freq=1,
+        validation_freq=5,
         validation_steps=100, # 0.41:178 0.25:633
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
