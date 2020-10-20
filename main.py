@@ -72,8 +72,8 @@ model_dir = HOME_PATH + "/models/"
 
 if mode == "tbm":
     STG_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
-    train_path = STG_PATH + "/TILES_(256, 256)_0.25/"
-    val_path = STG_PATH + "/TILES_(256, 256)_0.25/"
+    train_path = STG_PATH + "/TILES_(256, 256)_0.41/"
+    val_path = STG_PATH + "/TILES_(256, 256)_0.41/"
     test_path = HOME_PATH + "/DATA/test_1024/k/"
     model_dir = STG_PATH + "/models/"
 if mode == "mac":
@@ -101,13 +101,13 @@ test_size = (2048, 2048)
 bs = 16
 bs_v = 16
 bs_i = 1
-step_num = 33614 // 10 // bs # 0.41
+step_num = 33614 // bs # 0.41
 # step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
 verbose = 1
 
-checkpoint_period = 1
+checkpoint_period = 10
 flag_test, flag_continue = 0, 0
 flag_multi_gpu = 1
 continue_step = (0, 0)
@@ -117,7 +117,7 @@ model_name = "dense121-unet"
 loss_name = "focaldice"  # focalja, bce, bceja, ja, dice...
 data_name = "kmr9x1(3768)-0.25"
 
-configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.hdf5" % (
+configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.tf" % (
     framework,
     model_name,
     data_name,
@@ -184,7 +184,7 @@ trainGene = load_kmr_tfdata(
     dataset_path = train_path,
     batch_size=bs,
     wsi_ids=fold[0][0],
-    aug_dict=data_gen_args,
+    aug=True,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
     image_save_prefix="image",
@@ -202,14 +202,14 @@ valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
     wsi_ids=fold[0][1],
-    aug_dict={},
+    aug=False,
     save_to_dir=None,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
     target_size=target_size,
     # cache='/gs/hs0/tga-yamaguchi.m/ji/val',
     cache=False,
-    shuffle_buffer_size=1,
+    shuffle_buffer_size=128,
     seed=hvd.rank()
 )
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
@@ -229,7 +229,7 @@ if mode == "mac":
         target_size=test_size,
     )
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % (
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.tf" % (
     framework,
     model_name,
     data_name,
@@ -239,7 +239,7 @@ model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % (
     continue_step[1] + continue_step[0],
 )
 
-continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % (
+continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.tf" % (
     framework,
     model_name,
     data_name,
@@ -363,15 +363,15 @@ if not flag_test:
     ]
 
     # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
-    # if hvd.rank() == 0:
-    callbacks.append(model_checkpoint)
-    callbacks.append(tensorboard_callback)
-    # print(model.summary())
+    if hvd.rank() == 0:
+        callbacks.append(model_checkpoint)
+        callbacks.append(tensorboard_callback)
+        # print(model.summary())
     training_history = model.fit(
         trainGene,
         validation_data=valGene,
-        validation_freq=20,
-        validation_steps=1, # 0.41:178 0.25:633
+        validation_freq=1,
+        validation_steps=100, # 0.41:178 0.25:633
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
         initial_epoch=0,
@@ -384,7 +384,7 @@ val_iters = 1280 // bs_v
 # grid search
 for k in range(3, 100):
     # continue each model checkpoint
-    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % (
+    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.tf" % (
         framework,
         model_name,
         data_name,

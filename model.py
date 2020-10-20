@@ -20,6 +20,7 @@ from utils import *
 from tensorflow.keras import losses, callbacks
 import tensorflow_io as tfio
 from tensorflow.keras.models import *
+from tensorflow.keras import layers
 from tensorflow.keras.layers import *
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.utils import plot_model

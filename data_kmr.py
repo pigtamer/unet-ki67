@@ -200,7 +200,7 @@ def load_kmr_tfdata(dataset_path,
                     batch_size=16,
                     wsi_ids=None,
                     stains=["HE", "Mask"],
-                    aug_dict=None,
+                    aug=False,
                     image_color_mode="rgb",
                     mask_color_mode="grayscale",
                     image_save_prefix="image",
@@ -258,8 +258,21 @@ def load_kmr_tfdata(dataset_path,
             labeled_ds, cache = (cache + '_%s_%d.tfcache'%(staintype, 1E10*np.random.rand()))
             if isinstance(cache, str) else cache)
     train_generator = zip(data_generator["HE"],data_generator["Mask"])
+    if aug:
+        def data_augmentation(seed):
+            return tf.keras.Sequential([
+            layers.experimental.preprocessing.RandomFlip("horizontal_and_vertical", seed=seed),
+            layers.experimental.preprocessing.RandomRotation(0.2, fill_mode='constant', seed=seed),
+            layers.experimental.preprocessing.RandomTranslation(
+                0.1, 0.1, fill_mode='constant', seed=seed),
+            ])
+        augimg = data_augmentation(seed)
+        augmask = data_augmentation(seed)
     for (img, mask) in train_generator:
         img, mask = adjustData(img, mask, flag_multi_class, num_class)
+        if aug:
+            img = augimg(img)
+            mask = augmask(mask)
         yield (img, mask)
 
 # train_gen = load_kmr_tfdata(
