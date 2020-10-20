@@ -101,10 +101,10 @@ test_size = (2048, 2048)
 bs = 16
 bs_v = 16
 bs_i = 1
-step_num = 33614 // bs # 0.41
+# step_num = 33614 // bs # 0.41
 # step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
-step_num = 585891 // bs # all tumor
+# step_num = 585891 // bs # all tumor
 step_num = 162721 // bs # G1 tumor
 verbose = 1
 
@@ -342,7 +342,7 @@ if not flag_test:
         save_best_only=False,
         save_weights_only=False,
         mode="auto",
-        save_freq=checkpoint_period,
+        save_freq=checkpoint_period*steps_per_epoch,
     )
 
     start = time.time()
