@@ -342,7 +342,7 @@ if not flag_test:
         save_best_only=False,
         save_weights_only=False,
         mode="auto",
-        save_freq=checkpoint_period*steps_per_epoch,
+        save_freq=checkpoint_period*step_num,
     )
 
     start = time.time()
