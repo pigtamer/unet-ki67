@@ -181,7 +181,8 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
     return model
 
-def smunet(loss="focal"):
+def smunet(loss="focal",
+            pretrained_weights = None):
     model = sm.Unet(backbone_name = 'densenet121',
                     input_shape=(None, None, 3),
                     classes=1,
@@ -195,6 +196,8 @@ def smunet(loss="focal"):
                     decoder_use_batchnorm=True)
     model.compile(optimizer=opt,
                 loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
+    if pretrained_weights:
+        model.load_weights(pretrained_weights)
     return model
 
 model_dict = {

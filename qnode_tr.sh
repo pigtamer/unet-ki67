@@ -2,7 +2,7 @@
 #$ -cwd
 #$ -l q_node=16
 #$ -l h_rt=2:00:00
-#$ -N q16
+#$ -N q16-hdf5-noaug-nocache-noshard
 . /etc/profile.d/modules.sh
 module load python cuda/10.1.105 cudnn openmpi
 rm /gs/hs0/tga-yamaguchi.m/ji/*tfcache*

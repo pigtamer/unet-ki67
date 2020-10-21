@@ -100,27 +100,29 @@ target_size = (edge_size, edge_size)
 # test_size = (1536, 1536)
 test_size = (2048, 2048)
 
-bs = 16
+bs = 32
 bs_v = 16
 bs_i = 1
 # step_num = 33614 // bs # 0.41
 # step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
-step_num = 162721 // bs # G1 tumor
+# step_num = 162721 // bs # G1 tumor
+step_num = 466272 // bs # G123 tumor, 3div
 verbose = 1
 
 checkpoint_period = 5
-flag_test, flag_continue = 0, 0
+flag_test, flag_continue = 0, 1
 flag_multi_gpu = 1
-continue_step = (0, 0)
+continue_step = (0, 36) # start epoch, total epochs trained
+initial_epoch = continue_step[0] + continue_step[1]
 num_epoches = 300
 framework = "hvd-tfk"
 model_name = "dense121-unet"
-loss_name = "focaldice"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr-G1-3x2"
+loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr-G1G2G3-9x3-123"
 
-configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.tf" % (
+configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.h5" % (
     framework,
     model_name,
     data_name,
@@ -165,38 +167,31 @@ if mode != "mac":
 
 
 fold = folds(
-    # l_wsis=[
-    #     k + ""
-    #     for k in [
-    #         "01_14-3768_Ki67", #1
-    #         "01_14-7015_Ki67",
-    #         "01_15-1052_Ki67",
-    #         "01_17-5256_Ki67", #2
-    #         "01_17-6747_Ki67",
-    #         "01_17-8107_Ki67",
-    #         "01_15-2502_Ki67", #3
-    #         "01_17-7885_Ki67",
-    #         "01_17-7930_Ki67",
-    #     ]
-    # ],
-    # k=9,
     l_wsis=[
-    k + ""
-    for k in [
-        "01_14-3768_Ki67",
-        "01_14-7015_Ki67",
-        "01_15-1052_Ki67",
-    ]
+        k + ""
+        for k in [
+            "01_14-7015_Ki67", #1 22091
+            "01_17-5256_Ki67", #2 54923
+            "01_17-7885_Ki67", #3 42635 --> 466272
+
+            "01_15-1052_Ki67", #1 34251
+            "01_17-6747_Ki67", #2 66635
+            "01_15-2502_Ki67", #3 136715
+        
+            "01_14-3768_Ki67", #1 106379
+            "01_17-8107_Ki67", #2 69097
+            "01_17-7930_Ki67", #3 53195
+        ]
     ],
     k=3,
 )
-print(fold[1][0])
-print(fold[1][1])
+print(fold[0][0])
+print(fold[0][1])
 trainGene = load_kmr_tfdata(
     dataset_path = train_path,
     batch_size=bs,
-    wsi_ids=fold[1][0],
-    aug=True,
+    wsi_ids=fold[0][0],
+    aug=False,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
     image_save_prefix="image",
@@ -213,7 +208,7 @@ trainGene = load_kmr_tfdata(
 valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    wsi_ids=fold[1][1],
+    wsi_ids=fold[0][1],
     aug=False,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -241,7 +236,7 @@ if mode == "mac":
         target_size=test_size,
     )
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.tf" % (
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
     framework,
     model_name,
     data_name,
@@ -251,7 +246,7 @@ model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.tf" % (
     continue_step[1] + continue_step[0],
 )
 
-continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.tf" % (
+continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
     framework,
     model_name,
     data_name,
@@ -263,15 +258,18 @@ continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.tf" % (
 )
 
 if flag_continue:
-    model = unet(
-        pretrained_weights=continue_path,
-        input_size=(target_size[0], target_size[1], 3),
-        lr=lr,
-        multi_gpu=flag_multi_gpu,
-        loss=loss_name,
-    )
+    # model = unet(
+    #     pretrained_weights=continue_path,
+    #     input_size=(target_size[0], target_size[1], 3),
+    #     lr=lr,
+    #     multi_gpu=flag_multi_gpu,
+    #     loss=loss_name,
+    # )
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
+    sm.set_framework('tf.keras')
+    model = smunet(loss=loss_name,
+                    pretrained_weights=continue_path)
 else:
     # model = unet(
     #     pretrained_weights=None,
@@ -386,7 +384,7 @@ if not flag_test:
         validation_steps=100, # 0.41:178 0.25:633
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
-        initial_epoch=0,
+        initial_epoch=initial_epoch,
         callbacks=callbacks
     )
 
@@ -396,7 +394,7 @@ val_iters = 1280 // bs_v
 # grid search
 for k in range(3, 100):
     # continue each model checkpoint
-    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.tf" % (
+    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
         framework,
         model_name,
         data_name,

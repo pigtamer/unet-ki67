@@ -232,8 +232,8 @@ def load_kmr_tfdata(dataset_path,
                 ds = ds.cache(cache)
             else:
                 ds = ds.cache()
-        ds = ds.shard(num_shards = hvd.size(),
-                        index = hvd.rank())
+        # ds = ds.shard(num_shards = hvd.size(),
+        #                 index = hvd.rank())
         ds = ds.shuffle(buffer_size=shuffle_buffer_size, seed=seed, 
                         reshuffle_each_iteration=False)
         # Repeat forever
