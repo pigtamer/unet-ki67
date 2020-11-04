@@ -124,11 +124,11 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
         drop5 = Dropout(0.5)(conv5)
 
-        res5 = resblockn(9, drop5, 1024)
+        # res5 = resblockn(9, drop5, 1024)
 
 
         up6 = Conv2D(512, 2, activation='relu', padding='same',
-                    kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(res5))
+                    kernel_initializer='he_normal')(UpSampling2D(size=(2, 2))(drop5))
 
         merge6 = concatenate([drop4, up6], axis=3)
         conv6 = Conv2D(512, 3, activation='relu', padding='same',
@@ -169,7 +169,7 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
         model = Model(inputs=inputs, outputs=conv10)
         #model = multi_gpu_model(model, gpus=2)
         model.compile(optimizer=opt,
-                        loss=sm.losses.binary_focal_jaccard_loss, metrics=[sm.metrics.iou_score, 'accuracy'])
+                        loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
     else:
         model = Model(inputs=inputs, outputs=conv10)
         model.compile(optimizer=opt,

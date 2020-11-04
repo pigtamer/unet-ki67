@@ -1,6 +1,6 @@
 """ Dealing with the data from Kimura
 
-* Plan 1.
+* Plan 1. [OK]
 
 Inter-WSI validation
 Do not use the folds inside of each WSI.
@@ -15,6 +15,9 @@ Use folds inside each WSI.
 Now we created 10 folds. k folds (say 9) from ALL WSIs are involved in training
     and 10-k folds are involved in validation at a time.
 
+* Plan 3.
+Data augmentation and preprocessing with TF generic API
+--> i.e. use png/jpeg decoding
 """
 
 #%%
@@ -214,13 +217,17 @@ def load_kmr_tfdata(dataset_path,
                     shuffle_buffer_size=128
                     ) -> tuple:
     def parse_image(file_path):
-            img = tf.io.read_file(file_path)
-            # convert the compressed string to a 3D uint8 tensor
-            img = tfio.experimental.image.decode_tiff(img)
-            img = tf.image.convert_image_dtype(img, tf.float32)
-            img = tf.image.resize(img, [target_size[0], target_size[1]])
-            # resize the image to the desired size.
-            return img
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
+        img = tf.io.decode_png(img, channels=3)
+
+        img = tf.image.convert_image_dtype(img, tf.float32)
+        
+        img = tf.image.resize(img, [target_size[0], target_size[1]])
+        # resize the image to the desired size.
+        if aug_dict:
+            img = augment(img)
+        return img
 
     def prepare_for_training(ds, cache=cache, 
                             shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size):
@@ -246,10 +253,31 @@ def load_kmr_tfdata(dataset_path,
 
     data_generator = {}
     for staintype in stains:
+        if staintype != "Mask":
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
+                # Random crop back to the original size
+                image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 3], seed=seed)
+                image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
+        else:
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
+                # Random crop back to the original size
+                image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 1], seed=seed)
+                image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
+
         dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi +  
                     "*/Tiles/Tumor/*/*" for wsi in wsi_ids ]
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
-        AUTOTUNE = tf.data.experimental.AUTOTUNE
+        list_ds = list_ds.shard(num_shards = hvd.size(), index = hvd.rank());AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
         # processed in parallel
         labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
@@ -260,21 +288,7 @@ def load_kmr_tfdata(dataset_path,
             labeled_ds, cache = (cache + '_%s_%d.tfcache'%(staintype, 1E10*np.random.rand()))
             if isinstance(cache, str) else cache)
     train_generator = zip(data_generator["HE"],data_generator["Mask"])
-    if aug:
-        def data_augmentation(seed):
-            return tf.keras.Sequential([
-            layers.experimental.preprocessing.RandomFlip("horizontal_and_vertical", seed=seed),
-            layers.experimental.preprocessing.RandomRotation(0.2, fill_mode='constant', seed=seed),
-            layers.experimental.preprocessing.RandomTranslation(
-                0.1, 0.1, fill_mode='constant', seed=seed),
-            ])
-        augimg = data_augmentation(seed)
-        augmask = data_augmentation(seed)
     for (img, mask) in train_generator:
-        img, mask = adjustData(img, mask, flag_multi_class, num_class)
-        if aug:
-            img = augimg(img)
-            mask = augmask(mask)
         yield (img, mask)
 
 # train_gen = load_kmr_tfdata(

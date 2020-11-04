@@ -1,5 +1,6 @@
 #%%
 # %matplotlib inline
+import configs
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -114,7 +115,7 @@ verbose = 1
 checkpoint_period = 5
 flag_test, flag_continue = 0, 1
 flag_multi_gpu = 1
-continue_step = (0, 36) # start epoch, total epochs trained
+continue_step = (0, 31) # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 num_epoches = 300
 framework = "hvd-tfk"
@@ -128,7 +129,7 @@ configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.h5" % (
     data_name,
     loss_name,
     edge_size,
-    hvd.size(),
+    hvd.size(), # number of nodes, ndx
     lrstr
     )
 
@@ -271,13 +272,13 @@ if flag_continue:
     model = smunet(loss=loss_name,
                     pretrained_weights=continue_path)
 else:
-    # model = unet(
-    #     pretrained_weights=None,
-    #     input_size=(target_size[0], target_size[1], 3),
-    #     lr=lr,
-    #     multi_gpu=flag_multi_gpu,
-    #     loss=loss_name,
-    # )
+    model = unet(
+         pretrained_weights=None,
+         input_size=(target_size[0], target_size[1], 3),
+         lr=lr,
+         multi_gpu=flag_multi_gpu,
+         loss=loss_name,
+    )
     sm.set_framework('tf.keras')
     model = smunet(loss=loss_name)
 
