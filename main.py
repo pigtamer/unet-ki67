@@ -1,7 +1,7 @@
 #%%
 # %matplotlib inline
 
-mode = "-mac"
+mode = "mac"
 
 import os
 
@@ -82,18 +82,19 @@ if mode == "mac":
     val_path = "/Users/cunyuan/DATA/chipwise/val/"
     val_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
     test_path = "/Users/cunyuan/DATA/test_1024/crop/"
-    # index_path = "/Users/cunyuan/DATA/ji1024_orig/val1024/"
+    index_path = "/Users/cunyuan/DATA/ji1024_orig/val1024/"
     # index_path = "/Users/cunyuan/code/tti/cyclegan-ki67/datasets/comparison/v1/"
     # index_path="/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
     # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
-    index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
+    # index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
+    index_path = "/Users/cunyuan/DATA/Kimura/Endometrioid Carcinoma/G2/17-5256/my2048/" # g2-6747 g2-5256
 
 lr = 1e-3
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
 
-# test_size = (1024 // (256 // edge_size), 1024 // (256 // edge_size))
+test_size = (1024, 1024)
 # test_size = (3328, 3328)
 # test_size = (1536, 1536)
 test_size = (2048, 2048)
@@ -104,14 +105,14 @@ bs_i = 1
 step_num = 783872 // bs
 
 checkpoint_period = 1
-flag_test, flag_continue = 0, 0
+flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
-continue_step = (0, 40)
+continue_step = (0, 0)
 num_epoches = 20
-framework = "k"
-model_name = "unet"
-loss_name = "bceja"  # focalja, bce, bceja, ja
-data_name = "kmr9x1"
+framework = "hvd-tfk"
+model_name = "dense121-unet"
+loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr-G1G2G3-9x3-123"
 
 folds = folds(
     l_wsis=[
@@ -130,7 +131,7 @@ folds = folds(
     ],
     k=3,
 )
-
+print(folds[0][0])
 trainGene = kmrGenerator(
     dataset_path=train_path,
     batch_size=bs,
@@ -159,9 +160,9 @@ if mode == "mac":
     indexGene = indexTestGenerator(
         bs_i,
         train_path=index_path,
-        image_folder="he",
+        image_folder="chips",
         mask_folder="masks",
-        nuclei_folder="ihc",
+        nuclei_folder="dab",
         aug_dict={},
         save_to_dir=None,
         image_color_mode="rgb",
@@ -170,7 +171,7 @@ if mode == "mac":
         target_size=test_size,
     )
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % (
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
     framework,
     model_name,
     data_name,
@@ -180,7 +181,7 @@ model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.hdf5" % (
     continue_step[1] + continue_step[0],
 )
 
-continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % (
+continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
     framework,
     model_name,
     data_name,
@@ -199,6 +200,8 @@ if flag_continue:
         multi_gpu=flag_multi_gpu,
         loss=loss_name,
     )
+    # sm.set_framework('keras')
+    # model = smunet(loss=loss_name)
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
 else:
@@ -250,16 +253,16 @@ print(
     "\n",
 )
 #%%
-for hd, k in zip(trainGene, range(10)):
-    im = hd[0][0]
-    dab = hd[1][0]
-    plt.figure(figsize=(8, 4), dpi=300)
-    plt.tight_layout()
-    plt.subplot(121)
-    plt.imshow(im)
-    plt.axis("off")
-    plt.subplot(122)
-    plt.imshow(dab); plt.axis('off')
+# for hd, k in zip(trainGene, range(10)):
+#     im = hd[0][0]
+#     dab = hd[1][0]
+#     plt.figure(figsize=(8, 4), dpi=300)
+#     plt.tight_layout()
+#     plt.subplot(121)
+#     plt.imshow(im)
+#     plt.axis("off")
+#     plt.subplot(122)
+#     plt.imshow(dab); plt.axis('off')
     # plt.show()
 #%%
 if not flag_test:
@@ -288,9 +291,9 @@ if not flag_test:
 
 val_iters = 1280 // bs_v
 # grid search
-for k in range(3, 100):
+for k in range(31, 100):
     # continue each model checkpoint
-    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.hdf5" % (
+    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
         framework,
         model_name,
         data_name,
@@ -300,15 +303,19 @@ for k in range(3, 100):
         continue_step[0] + continue_step[1],
         k * checkpoint_period,
     )
-    model = unet(
-        pretrained_weights=start_path,
-        input_size=(target_size[0], target_size[1], 3),
-        lr=lr,
-        multi_gpu=flag_multi_gpu,
-    )
+    sm.set_framework('keras')
+    model = smunet(loss=loss_name,
+                   pretrained_weights=start_path,)
+    # model = unet(
+    #     pretrained_weights=start_path,
+    #     input_size=(target_size[0], target_size[1], 3),
+    #     lr=lr,
+    #     multi_gpu=flag_multi_gpu,
+    # )
     # model = denseunet(start_path)
     # model = unetxx(start_path,
     #                lr=lr)
+    """
     for k_val, (x, y) in zip(tqdm(range(val_iters)), valGene):
         f = model.predict(x, batch_size=bs_v)
         # plt.show()
@@ -372,7 +379,7 @@ for k in range(3, 100):
         plt.title("Pred thresh")
         fig.tight_layout()
         plt.show()
-
+    """
     if mode == "mac":
         num_tp_, num_tn_, num_pred_, num_npred_, num_positive_, num_negative_ = (
             0,
@@ -383,12 +390,12 @@ for k in range(3, 100):
             0,
         )
         avgiou = 0
-        li_mask = cv.cvtColor(
-            cv.imread(
-                "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/limask/01_15-2502_Ki67_HE (1, x=130037, y=69624, w=2056, h=2056)_1_mask.tif"
-            ),
-            cv.COLOR_BGR2GRAY,
-        )
+        # li_mask = cv.cvtColor(
+        #     cv.imread(
+        #         "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/limask/01_15-2502_Ki67_HE (1, x=130037, y=69624, w=2056, h=2056)_1_mask.tif"
+        #     ),
+        #     cv.COLOR_BGR2GRAY,
+        # )
         for kk, (tx, ty, tn) in zip(range(1000), indexGene):
             # tx, ty, tn = indexGene.__next__()
             # if kk< 500: continue
@@ -411,42 +418,42 @@ for k in range(3, 100):
             avgiou += iou
             # plt.show()
             plt.imsave(
-                "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/test_seq_%d.png"
+                index_path + "result_%d.png"
                 % kk,
                 res,
             )
-            plt.imsave(
-                "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/he_seq_%d.png"
-                % kk,
-                tx[0],
-            )
-            plt.imsave(
-                "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/ihc_seq_%d.png"
-                % kk,
-                tn[0],
-            )
-            plt.imsave(
-                "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/mask_seq_%d.png"
-                % kk,
-                tn[0, :, :, 0],
-                cmap="gray",
-            )
-            print(kk)
-        avgiou /= kk + 1
-        print("avgiou:", avgiou)
-        num_all_ = num_positive_ + num_negative_
-        print(
-            "F.Prec. %3.2f F.Reca. %3.2f \nT.Prec. %3.2f T.Reca. %3.2f\nAcc. %3.2f"
-            % (
-                num_tn_ / num_npred_,
-                num_tn_ / num_negative_,
-                num_tp_ / num_pred_,
-                num_tp_ / num_positive_,
-                (num_tn_ + num_tp_) / (num_negative_ + num_positive_),
-            )
-        )
-        print(
-            "Labelling index Pred. %3.2f\nTrue. %3.2f"
-            % (num_pred_ / num_all_, num_positive_ / num_all_)
-        )
-    results = model.predict_generator(testGene, 30, verbose=1)
+    #         plt.imsave(
+    #             "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/he_seq_%d.png"
+    #             % kk,
+    #             tx[0],
+    #         )
+    #         plt.imsave(
+    #             "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/ihc_seq_%d.png"
+    #             % kk,
+    #             tn[0],
+    #         )
+    #         plt.imsave(
+    #             "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/mask_seq_%d.png"
+    #             % kk,
+    #             tn[0, :, :, 0],
+    #             cmap="gray",
+    #         )
+    #         print(kk)
+    #     avgiou /= kk + 1
+    #     print("avgiou:", avgiou)
+    #     num_all_ = num_positive_ + num_negative_
+    #     print(
+    #         "F.Prec. %3.2f F.Reca. %3.2f \nT.Prec. %3.2f T.Reca. %3.2f\nAcc. %3.2f"
+    #         % (
+    #             num_tn_ / num_npred_,
+    #             num_tn_ / num_negative_,
+    #             num_tp_ / num_pred_,
+    #             num_tp_ / num_positive_,
+    #             (num_tn_ + num_tp_) / (num_negative_ + num_positive_),
+    #         )
+    #     )
+    #     print(
+    #         "Labelling index Pred. %3.2f\nTrue. %3.2f"
+    #         % (num_pred_ / num_all_, num_positive_ / num_all_)
+    #     )
+    # results = model.predict_generator(testGene, 30, verbose=1)

@@ -26,7 +26,7 @@ import skimage.transform as trans
 
 from data import adjustData
 #%%
-mode = "-mac"  # TODO: use argparse instead!!
+mode = "mac"  # TODO: use argparse instead!!
 
 if mode == "mac":
     # use plaidml backend for Mac OS

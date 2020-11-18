@@ -23,9 +23,10 @@ from segmodel import *
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
     "ja": sm.losses.jaccard_loss,
-    "focal": focal_loss,
+    "focal": sm.losses.binary_focal_loss,
     "bce":sm.losses.binary_crossentropy,
     "focalja": sm.losses.binary_focal_jaccard_loss,
+    "focaldice":sm.losses.binary_focal_dice_loss,
     "dice": sm.losses.dice_loss,
     "bcedice": sm.losses.bce_dice_loss,
     "l1": losses.mean_absolute_percentage_error,
@@ -149,6 +150,24 @@ def unet(pretrained_weights=None, input_size=(256, 256, 3), lr=1E-3, multi_gpu=F
 
     return model
 
+
+def smunet(loss="focal", pretrained_weights=None):
+    model = sm.Unet(backbone_name = 'densenet121',
+                    input_shape=(None, None, 3),
+                    classes=1,
+                    activation='sigmoid',
+                    weights=None,
+                    encoder_weights='imagenet',
+                    encoder_freeze=False,
+                    encoder_features='default',
+                    decoder_block_type='upsampling',
+                    decoder_filters=(256, 128, 64, 32, 16),
+                    decoder_use_batchnorm=True)
+    model.compile(optimizer='adam',
+                loss=loss_dict[loss], metrics=[sm.metrics.iou_score, 'accuracy'])
+    if pretrained_weights:
+        model.load_weights(pretrained_weights)
+    return model
 model_dict = {
     "unet": unet,
     "unetxx": unetxx,
