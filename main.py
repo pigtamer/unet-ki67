@@ -2,7 +2,7 @@
 # %matplotlib inline
 
 mode = "mac"
-
+#%%
 import os
 
 if mode == "mac":
@@ -87,7 +87,7 @@ if mode == "mac":
     # index_path="/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/val/"
     # index_path = "/Users/cunyuan/DATA/Kimura/qupath-proj/tiles/0.36/results/200/2502/"
     # index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
-    index_path = "/Users/cunyuan/DATA/Kimura/Endometrioid Carcinoma/G2/17-5256/my2048/" # g2-6747 g2-5256
+    # index_path = "/Users/cunyuan/DATA/Kimura/Endometrioid Carcinoma/G2/17-5256/my2048/" # g2-6747 g2-5256
 
 lr = 1e-3
 lrstr = "{:.2e}".format(lr)
@@ -97,7 +97,7 @@ target_size = (edge_size, edge_size)
 test_size = (1024, 1024)
 # test_size = (3328, 3328)
 # test_size = (1536, 1536)
-test_size = (2048, 2048)
+# test_size = (2048, 2048)
 
 bs = 32
 bs_v = 1
@@ -109,10 +109,10 @@ flag_test, flag_continue = 1, 0
 flag_multi_gpu = 0
 continue_step = (0, 0)
 num_epoches = 20
-framework = "hvd-tfk"
-model_name = "dense121-unet"
+framework = "k" # hvd-tfk, k
+model_name = "unet" # dense121-unet, unet
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr-G1G2G3-9x3-123"
+data_name = "chipwise" # chipwise, kmr-G1G2G3-9x3-123
 
 folds = folds(
     l_wsis=[
@@ -162,12 +162,12 @@ if mode == "mac":
         train_path=index_path,
         image_folder="chips",
         mask_folder="masks",
-        nuclei_folder="dab",
+        nuclei_folder="nuclei", # change to nuclei when eval old data
         aug_dict={},
         save_to_dir=None,
         image_color_mode="rgb",
         mask_color_mode="grayscale",
-        nuclei_color_mode="rgb",
+        nuclei_color_mode="grayscale",
         target_size=test_size,
     )
 
@@ -291,7 +291,7 @@ if not flag_test:
 
 val_iters = 1280 // bs_v
 # grid search
-for k in range(31, 100):
+for k in range(35, 100):
     # continue each model checkpoint
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
         framework,
@@ -304,14 +304,14 @@ for k in range(31, 100):
         k * checkpoint_period,
     )
     sm.set_framework('keras')
-    model = smunet(loss=loss_name,
-                   pretrained_weights=start_path,)
-    # model = unet(
-    #     pretrained_weights=start_path,
-    #     input_size=(target_size[0], target_size[1], 3),
-    #     lr=lr,
-    #     multi_gpu=flag_multi_gpu,
-    # )
+    # model = smunet(loss=loss_name,
+    #                pretrained_weights=start_path,)
+    model = unet(
+        pretrained_weights=start_path,
+        input_size=(target_size[0], target_size[1], 3),
+        lr=lr,
+        multi_gpu=flag_multi_gpu,
+    )
     # model = denseunet(start_path)
     # model = unetxx(start_path,
     #                lr=lr)

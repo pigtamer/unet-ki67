@@ -224,9 +224,9 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
     lbi = num_pred / (num_all + 1E-6)
     lbi_true = num_positive / (num_all+1E-6)
     # print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
-    # plt.figure(figsize=(6, 6))
-    # plt.imshow(res_set);
-    # plt.axis('off');
+    plt.figure(figsize=(6, 6))
+    plt.imshow(res_set);
+    plt.axis('off');
     # plt.title("Region # policy Prec. %3.2f Rec. %3.2f\nLabelling index: [True] %3.2f [Ours] %3.2f" %
     #           (pprecision, precall, lbi_true, lbi))
 
@@ -235,17 +235,17 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
     # print(iou, f1)
     res = hecconv(res, H_ki67)
     res = np.clip(res, 0, 1)
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(6, 6))
     plt.imshow(res)
     plt.axis("off")
     fig.tight_layout()
     plt.show()
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(6, 6))
     plt.imshow(nuclei[0])
     plt.axis("off")
     fig.tight_layout()
     plt.show()
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(6, 6))
     plt.imshow(im_in[0])
     plt.axis("off")
     fig.tight_layout()
