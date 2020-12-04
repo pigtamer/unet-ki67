@@ -109,7 +109,7 @@ bs_i = 1
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
 # step_num = 162721 // bs # G1 tumor
-step_num = 466272 // bs # G123 tumor, 3div
+step_num = 466272*2 // bs # G123 tumor, 3div
 verbose = 1
 
 checkpoint_period = 5

@@ -225,8 +225,8 @@ def load_kmr_tfdata(dataset_path,
         
         img = tf.image.resize(img, [target_size[0], target_size[1]])
         # resize the image to the desired size.
-        if aug_dict:
-            img = augment(img)
+        # if aug:
+        #     img = augment(img)
         return img
 
     def prepare_for_training(ds, cache=cache, 
@@ -253,29 +253,30 @@ def load_kmr_tfdata(dataset_path,
 
     data_generator = {}
     for staintype in stains:
-        if staintype != "Mask":
-            def augment(image, seed=seed):
-                # Add 6 pixels of padding
-                image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
-                # Random crop back to the original size
-                image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 3], seed=seed)
-                image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
-                image = tf.image.random_flip_left_right(image, seed=seed)
-                image = tf.image.random_flip_up_down(image, seed=seed)
-                return image
-        else:
-            def augment(image, seed=seed):
-                # Add 6 pixels of padding
-                image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
-                # Random crop back to the original size
-                image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 1], seed=seed)
-                image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
-                image = tf.image.random_flip_left_right(image, seed=seed)
-                image = tf.image.random_flip_up_down(image, seed=seed)
-                return image
+        if aug:
+            if staintype != "Mask":
+                def augment(image, seed=seed):
+                    # Add 6 pixels of padding
+                    image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
+                    # Random crop back to the original size
+                    image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 3], seed=seed)
+                    image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
+                    image = tf.image.random_flip_left_right(image, seed=seed)
+                    image = tf.image.random_flip_up_down(image, seed=seed)
+                    return image
+            else:
+                def augment(image, seed=seed):
+                    # Add 6 pixels of padding
+                    image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
+                    # Random crop back to the original size
+                    image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 1], seed=seed)
+                    image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
+                    image = tf.image.random_flip_left_right(image, seed=seed)
+                    image = tf.image.random_flip_up_down(image, seed=seed)
+                    return image
 
         dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi +  
-                    "*/Tiles/Tumor/*/*" for wsi in wsi_ids ]
+                    "*/Tiles/Tumor/*/*.png" for wsi in wsi_ids ]
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
         list_ds = list_ds.shard(num_shards = hvd.size(), index = hvd.rank());AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
@@ -287,10 +288,9 @@ def load_kmr_tfdata(dataset_path,
         data_generator[staintype] = prepare_for_training(
             labeled_ds, cache = (cache + '_%s_%d.tfcache'%(staintype, 1E10*np.random.rand()))
             if isinstance(cache, str) else cache)
-    train_generator = zip(data_generator["HE"],data_generator["Mask"])
+    train_generator = zip(data_generator["HE"],data_generator["Mask"]) # TODO: adapt this line to params
     for (img, mask) in train_generator:
         yield (img, mask)
-
 # train_gen = load_kmr_tfdata(
 #         "/home/cunyuan/4tb/Kimura/DATA/TILES_(256, 256)_0.41",
 #         ["01_15-1052_Ki67",   #   1   
