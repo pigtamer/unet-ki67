@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "/home/cunyuan/anaconda3/envs/k/bin/python",
+    "python.pythonPath": "/usr/local/Caskroom/miniconda/base/envs/k/bin/python",
     "python.formatting.provider": "black"
 }
