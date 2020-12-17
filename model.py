@@ -13,7 +13,7 @@ import numpy as np
 if mode != "mac":
     import tensorflow as tf
     from tensorflow import keras
-    import horovod.tensorflow.keras as hvd
+    
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.utils import multi_gpu_model
 from utils import *
@@ -32,21 +32,6 @@ from tensorflow.keras.callbacks import (
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 import segmentation_models as sm
-
-
-# Initialize Horovod
-hvd.init()
-
-# Pin GPU to be used to process local rank (one GPU per process)
-gpus = tf.config.experimental.list_physical_devices("GPU")
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
-if gpus:
-    tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], "GPU")
-opt = tf.optimizers.Adam(0.001 * hvd.size())
-
-# Horovod: add Horovod DistributedOptimizer.
-opt = hvd.DistributedOptimizer(opt)
 
 # from segmodel import *
 
@@ -220,7 +205,7 @@ def unet(
     return model
 
 
-def smunet(loss="focal", pretrained_weights=None):
+def smunet(loss="focal", lr = 0.001, pretrained_weights=None):
     model = sm.Unet(
         backbone_name="densenet121",
         input_shape=(None, None, 3),
@@ -234,6 +219,7 @@ def smunet(loss="focal", pretrained_weights=None):
         decoder_filters=(256, 128, 64, 32, 16),
         decoder_use_batchnorm=True,
     )
+    opt = tf.optimizers.Adam(lr)
     model.compile(
         optimizer=opt, loss=loss_dict[loss], metrics=[sm.metrics.iou_score, "accuracy"]
     )

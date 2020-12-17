@@ -243,8 +243,6 @@ def load_kmr_tfdata(
                 ds = ds.cache(cache)
             else:
                 ds = ds.cache()
-        # ds = ds.shard(num_shards = hvd.size(),
-        #                 index = hvd.rank())
         ds = ds.shuffle(
             buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=False
         )
@@ -300,7 +298,7 @@ def load_kmr_tfdata(
             for foldnum in cross_fold
         ]
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
-        list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
         # processed in parallel
