@@ -29,6 +29,7 @@ import skimage.transform as trans
 
 from data import adjustData
 from model import *
+
 #%%
 # mode = "-mac"  # TODO: use argparse instead!!
 
@@ -98,16 +99,16 @@ def folds(l_wsis=None, k=5):
         [type]: [description]
 
     l_wsis = [
-        "01_15-1052_Ki67_HE",   #   1   
-        "01_14-7015_Ki67_HE",      
-        "01_14-3768_Ki67_HE",   
+        "01_15-1052_Ki67_HE",   #   1
+        "01_14-7015_Ki67_HE",
+        "01_14-3768_Ki67_HE",
         "01_17-5256_Ki67_HE",   #   2
         "01_17-6747_Ki67_HE",
         "01_17-8107_Ki67_HE",
         "01_15-2502_Ki67_HE",   #   3
         "01_17-7885_Ki67_HE",
         "01_17-7930_Ki67_HE",
-    ] """
+    ]"""
 
     def create_divides(l, k):
         if len(l) % k == 0:
@@ -117,7 +118,7 @@ def folds(l_wsis=None, k=5):
         res = [l[i * n : i * n + n] for i in range(k)]
         if res[-1] == []:
             n -= 1
-        
+
         return [l[i * n : i * n + n] for i in range(k)]
 
     return [([x for x in l_wsis if x not in f], f) for f in create_divides(l_wsis, k)]
@@ -174,7 +175,7 @@ def kmrGenerator(
         batch_size=batch_size,
         save_to_dir=save_to_dir,
         save_prefix=image_save_prefix,
-        seed=seed
+        seed=seed,
     )
 
     dab_generator = dab_datagen.flow_from_directory(
@@ -199,38 +200,41 @@ def kmrGenerator(
 
 # %%
 # * 3. Tf.data as input pipeline
-def load_kmr_tfdata(dataset_path,
-                    batch_size=16,
-                    wsi_ids=None,
-                    stains=["HE", "Mask"],
-                    aug=False,
-                    image_color_mode="rgb",
-                    mask_color_mode="grayscale",
-                    image_save_prefix="image",
-                    mask_save_prefix="mask",
-                    flag_multi_class=False,
-                    num_class=2,
-                    save_to_dir=None,
-                    target_size=(256, 256),
-                    seed=1,
-                    cache = None,
-                    shuffle_buffer_size=128
-                    ) -> tuple:
+def load_kmr_tfdata(
+    dataset_path,
+    batch_size=16,
+    wsi_ids=None,
+    cross_fold=None,
+    stains=["HE", "Mask"],
+    aug=False,
+    image_color_mode="rgb",
+    mask_color_mode="grayscale",
+    image_save_prefix="image",
+    mask_save_prefix="mask",
+    flag_multi_class=False,
+    num_class=2,
+    save_to_dir=None,
+    target_size=(256, 256),
+    seed=1,
+    cache=None,
+    shuffle_buffer_size=128,
+) -> tuple:
     def parse_image(file_path):
         img = tf.io.read_file(file_path)
         # convert the compressed string to a 3D uint8 tensor
         img = tf.io.decode_png(img, channels=3)
 
         img = tf.image.convert_image_dtype(img, tf.float32)
-        
+
         img = tf.image.resize(img, [target_size[0], target_size[1]])
         # resize the image to the desired size.
-        # if aug:
-        #     img = augment(img)
+        if aug:
+            img = augment(img)
         return img
 
-    def prepare_for_training(ds, cache=cache, 
-                            shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size):
+    def prepare_for_training(
+        ds, cache=cache, shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size
+    ):
         # If a small dataset, only load it once, and keep it in memory.
         # use `.cache(filename)` to cache preprocessing work for datasets
         # that don't fit in memory.
@@ -241,8 +245,9 @@ def load_kmr_tfdata(dataset_path,
                 ds = ds.cache()
         # ds = ds.shard(num_shards = hvd.size(),
         #                 index = hvd.rank())
-        ds = ds.shuffle(buffer_size=shuffle_buffer_size, seed=seed, 
-                        reshuffle_each_iteration=False)
+        ds = ds.shuffle(
+            buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=False
+        )
         # Repeat forever
         ds = ds.repeat()
         ds = ds.batch(batch_size)
@@ -253,32 +258,50 @@ def load_kmr_tfdata(dataset_path,
 
     data_generator = {}
     for staintype in stains:
-        if aug:
-            if staintype != "Mask":
-                def augment(image, seed=seed):
-                    # Add 6 pixels of padding
-                    image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
-                    # Random crop back to the original size
-                    image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 3], seed=seed)
-                    image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
-                    image = tf.image.random_flip_left_right(image, seed=seed)
-                    image = tf.image.random_flip_up_down(image, seed=seed)
-                    return image
-            else:
-                def augment(image, seed=seed):
-                    # Add 6 pixels of padding
-                    image = tf.image.resize_with_crop_or_pad(image, target_size[0] + 16, target_size[0]  + 16) 
-                    # Random crop back to the original size
-                    image = tf.image.random_crop(image, size=[target_size[0] , target_size[0] , 1], seed=seed)
-                    image = tf.image.random_brightness(image, max_delta=0.05, seed=seed) # Random brightness
-                    image = tf.image.random_flip_left_right(image, seed=seed)
-                    image = tf.image.random_flip_up_down(image, seed=seed)
-                    return image
+        if staintype != "Mask":
 
-        dir_pattern = [dataset_path + "/" + staintype + "/" +  wsi +  
-                    "*/Tiles/Tumor/*/*.png" for wsi in wsi_ids ]
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(
+                    image, target_size[0] + 16, target_size[0] + 16
+                )
+                # Random crop back to the original size
+                image = tf.image.random_crop(
+                    image, size=[target_size[0], target_size[0], 3], seed=seed
+                )
+                image = tf.image.random_brightness(
+                    image, max_delta=0.05, seed=seed
+                )  # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
+
+        else:
+
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(
+                    image, target_size[0] + 16, target_size[0] + 16
+                )
+                # Random crop back to the original size
+                image = tf.image.random_crop(
+                    image, size=[target_size[0], target_size[0], 1], seed=seed
+                )
+                image = tf.image.random_brightness(
+                    image, max_delta=0.05, seed=seed
+                )  # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
+
+        dir_pattern = [
+            dataset_path + "/" + staintype + "/" + wsi + "*/Tiles/Tumor/" + foldnum + "/*"
+            for wsi in wsi_ids
+            for foldnum in cross_fold
+        ]
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
-        list_ds = list_ds.shard(num_shards = hvd.size(), index = hvd.rank());AUTOTUNE = tf.data.experimental.AUTOTUNE
+        list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+        AUTOTUNE = tf.data.experimental.AUTOTUNE
         # Set `num_parallel_calls` so that multiple images are
         # processed in parallel
         labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
@@ -286,16 +309,21 @@ def load_kmr_tfdata(dataset_path,
         # If the dataset doesn't fit in memory use a cache file,
         # eg. cache='./data.tfcache'
         data_generator[staintype] = prepare_for_training(
-            labeled_ds, cache = (cache + '_%s_%d.tfcache'%(staintype, 1E10*np.random.rand()))
-            if isinstance(cache, str) else cache)
-    train_generator = zip(data_generator["HE"],data_generator["Mask"]) # TODO: adapt this line to params
+            labeled_ds,
+            cache=(cache + "_%s_%d.tfcache" % (staintype, 1e10 * np.random.rand()))
+            if isinstance(cache, str)
+            else cache,
+        )
+    train_generator = zip(data_generator["HE"], data_generator["Mask"])
     for (img, mask) in train_generator:
         yield (img, mask)
+
+
 # train_gen = load_kmr_tfdata(
 #         "/home/cunyuan/4tb/Kimura/DATA/TILES_(256, 256)_0.41",
-#         ["01_15-1052_Ki67",   #   1   
-#         "01_14-7015_Ki67",      
-#         "01_14-3768_Ki67",   
+#         ["01_15-1052_Ki67",   #   1
+#         "01_14-7015_Ki67",
+#         "01_14-3768_Ki67",
 #         "01_17-5256_Ki67",   #   2
 #         "01_17-6747_Ki67",
 #         "01_17-8107_Ki67",],
