@@ -3,10 +3,11 @@
 import configs
 
 from mpi4py import MPI
+
 comm = MPI.COMM_WORLD
 print(comm.Get_size())
 
-import os,argparse
+import os, argparse
 from model import *
 from data import *
 from data_kmr import *
@@ -15,6 +16,7 @@ from utils import *
 from pathlib import Path
 from color_proc import *
 import segmentation_models as sm
+
 # from segmodel import denseunet, unetxx
 import time
 from datetime import datetime
@@ -90,7 +92,7 @@ if mode == "mac":
     index_path = "/Users/cunyuan/DATA/Kimura/EMca別症例_WSIとLI算出領域/LI算出領域/17-7885/my2048/"
 
 lr = 1e-3
-initial_lr = lr*hvd.size()
+initial_lr = lr * hvd.size()
 # initial_lr = lr*hvd.size()
 lrstr = "{:.2e}".format(lr)
 edge_size = 256
@@ -109,19 +111,19 @@ bs_i = 1
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
 # step_num = 162721 // bs # G1 tumor
-step_num = 466272 // bs # G123 tumor, 3div
+step_num = 466272 // bs  # G123 tumor, 3div
 verbose = 1
 
 checkpoint_period = 5
-flag_test, flag_continue = 0, 1
+flag_test, flag_continue = 0, 0
 flag_multi_gpu = 1
-continue_step = (0, 31) # start epoch, total epochs trained
+continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 num_epoches = 300
 framework = "hvd-tfk"
 model_name = "dense121-unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr-G1G2G3-9x3-123"
+data_name = "kmr-G1G2G3-9x3f8x2-123-noaug"
 
 configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.h5" % (
     framework,
@@ -129,12 +131,16 @@ configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.h5" % (
     data_name,
     loss_name,
     edge_size,
-    hvd.size(), # number of nodes, ndx
-    lrstr
-    )
+    hvd.size(),  # number of nodes, ndx
+    lrstr,
+)
 
 if mode != "mac":
-    logdir = "/gs/hs0/tga-yamaguchi.m/ji/logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S") + configstring
+    logdir = (
+        "/gs/hs0/tga-yamaguchi.m/ji/logs/scalars/"
+        + datetime.now().strftime("%Y%m%d-%H%M%S")
+        + configstring
+    )
     file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
 
@@ -144,20 +150,21 @@ def lr_schedule(epoch):
     Returns a custom learning rate that decreases as epochs progress.
     # ! This function is ineffective if the learning rate is scheduled in horovod callback
     """
-    learning_rate = 1E-2
+    learning_rate = 1e-2
     if epoch > 1:
-        learning_rate = 1E-3
+        learning_rate = 1e-3
     if epoch > 5:
-        learning_rate = 1E-3
+        learning_rate = 1e-3
     if epoch > 50:
-        learning_rate = 1E-3
+        learning_rate = 1e-3
     if epoch > 100:
-        learning_rate = 1E-4
+        learning_rate = 1e-4
     if epoch > 200:
-        learning_rate = 1E-4
-    
+        learning_rate = 1e-4
+
     tf.summary.scalar("learning rate", data=learning_rate, step=epoch)
     return learning_rate
+
 
 # def custom_dashboard(epoch, step):
 
@@ -171,26 +178,27 @@ fold = folds(
     l_wsis=[
         k + ""
         for k in [
-            "01_14-7015_Ki67", #1 22091
-            "01_17-5256_Ki67", #2 54923
-            "01_17-7885_Ki67", #3 42635 --> 466272
-
-            "01_15-1052_Ki67", #1 34251
-            "01_17-6747_Ki67", #2 66635
-            "01_15-2502_Ki67", #3 136715
-        
-            "01_14-3768_Ki67", #1 106379
-            "01_17-8107_Ki67", #2 69097
-            "01_17-7930_Ki67", #3 53195
+            "01_14-7015_Ki67",  # 1 22091
+            "01_17-5256_Ki67",  # 2 54923
+            "01_17-7885_Ki67",  # 3 42635 --> 466272
+            "01_15-1052_Ki67",  # 1 34251
+            "01_17-6747_Ki67",  # 2 66635
+            "01_15-2502_Ki67",  # 3 136715
+            "01_14-3768_Ki67",  # 1 106379
+            "01_17-8107_Ki67",  # 2 69097
+            "01_17-7930_Ki67",  # 3 53195
         ]
     ],
     k=3,
 )
+cross_fold = [["001", "002", "003", "004",  "006", "007", "008", "009"], ["005", "010"]]
 print(fold[0][0])
 print(fold[0][1])
+print(fold[0][0] + fold[0][1])
 trainGene = load_kmr_tfdata(
-    dataset_path = train_path,
+    dataset_path=train_path,
     batch_size=bs,
+    cross_fold=cross_fold[0],
     wsi_ids=fold[0][0],
     aug=False,
     image_color_mode="rgb",
@@ -204,12 +212,13 @@ trainGene = load_kmr_tfdata(
     # cache='/gs/hs0/tga-yamaguchi.m/ji/train',
     cache=False,
     shuffle_buffer_size=128,
-    seed=hvd.rank()
+    seed=hvd.rank(),
 )
 valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    wsi_ids=fold[0][1],
+    cross_fold=cross_fold[1],
+    wsi_ids=fold[0][0],
     aug=False,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -218,7 +227,7 @@ valGene = load_kmr_tfdata(
     # cache='/gs/hs0/tga-yamaguchi.m/ji/val',
     cache=False,
     shuffle_buffer_size=128,
-    seed=hvd.rank()
+    seed=hvd.rank(),
 )
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
 
@@ -268,18 +277,17 @@ if flag_continue:
     # )
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
-    sm.set_framework('tf.keras')
-    model = smunet(loss=loss_name,
-                    pretrained_weights=continue_path)
+    sm.set_framework("tf.keras")
+    model = smunet(loss=loss_name, pretrained_weights=continue_path)
 else:
     model = unet(
-         pretrained_weights=None,
-         input_size=(target_size[0], target_size[1], 3),
-         lr=lr,
-         multi_gpu=flag_multi_gpu,
-         loss=loss_name,
+        pretrained_weights=None,
+        input_size=(target_size[0], target_size[1], 3),
+        lr=lr,
+        multi_gpu=flag_multi_gpu,
+        loss=loss_name,
     )
-    sm.set_framework('tf.keras')
+    sm.set_framework("tf.keras")
     model = smunet(loss=loss_name)
 
 # plot_model(model, to_file="./model.svg")
@@ -332,9 +340,14 @@ print(
 #     plt.subplot(122)
 #     plt.imshow(dab[:, :, 0])
 #     plt.axis("off")
-    # plt.show()
+# plt.show()
 #%%
-print("============\n"*3,hvd.size(),"\n","============\n"*3,)
+print(
+    "============\n" * 3,
+    hvd.size(),
+    "\n",
+    "============\n" * 3,
+)
 if not flag_test:
     model_checkpoint = ModelCheckpoint(
         model_path,
@@ -343,34 +356,39 @@ if not flag_test:
         save_best_only=False,
         save_weights_only=False,
         mode="auto",
-        save_freq=checkpoint_period*step_num//hvd.size(),
+        save_freq=checkpoint_period * step_num // hvd.size(),
     )
 
     start = time.time()
     callbacks = [
-    # Horovod: broadcast initial variable states from rank 0 to all other processes.
-    # This is necessary to ensure consistent initialization of all workers when
-    # training is started with random weights or restored from a checkpoint.
-    hvd.callbacks.BroadcastGlobalVariablesCallback(0),
-
-    # Horovod: average metrics among workers at the end of every epoch.
-    #
-    # Note: This callback must be in the list before the ReduceLROnPlateau,
-    # TensorBoard, or other metrics-based callbacks.
-    hvd.callbacks.MetricAverageCallback(),
-
-    # Horovod: using `lr = 1.0 * hvd.size()` from the very beginning leads to worse final
-    # accuracy. Scale the learning rate `lr = 1.0` ---> `lr = 1.0 * hvd.size()` during
-    # the first five epochs. See https://arxiv.org/abs/1706.02677 for details.
-    hvd.callbacks.LearningRateWarmupCallback(warmup_epochs=5, initial_lr=initial_lr,
-                                             verbose=verbose),
-
-    # Horovod: after the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=5, end_epoch=10, multiplier=1.,
-                                               initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=10, end_epoch=50, multiplier=1, initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=50, end_epoch=200, multiplier=1, initial_lr=initial_lr),
-    hvd.callbacks.LearningRateScheduleCallback(start_epoch=200, multiplier=1e-1, initial_lr=initial_lr),
+        # Horovod: broadcast initial variable states from rank 0 to all other processes.
+        # This is necessary to ensure consistent initialization of all workers when
+        # training is started with random weights or restored from a checkpoint.
+        hvd.callbacks.BroadcastGlobalVariablesCallback(0),
+        # Horovod: average metrics among workers at the end of every epoch.
+        #
+        # Note: This callback must be in the list before the ReduceLROnPlateau,
+        # TensorBoard, or other metrics-based callbacks.
+        hvd.callbacks.MetricAverageCallback(),
+        # Horovod: using `lr = 1.0 * hvd.size()` from the very beginning leads to worse final
+        # accuracy. Scale the learning rate `lr = 1.0` ---> `lr = 1.0 * hvd.size()` during
+        # the first five epochs. See https://arxiv.org/abs/1706.02677 for details.
+        hvd.callbacks.LearningRateWarmupCallback(
+            warmup_epochs=5, initial_lr=initial_lr, verbose=verbose
+        ),
+        # Horovod: after the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
+        hvd.callbacks.LearningRateScheduleCallback(
+            start_epoch=5, end_epoch=10, multiplier=1.0, initial_lr=initial_lr
+        ),
+        hvd.callbacks.LearningRateScheduleCallback(
+            start_epoch=10, end_epoch=50, multiplier=1, initial_lr=initial_lr
+        ),
+        hvd.callbacks.LearningRateScheduleCallback(
+            start_epoch=50, end_epoch=200, multiplier=1, initial_lr=initial_lr
+        ),
+        hvd.callbacks.LearningRateScheduleCallback(
+            start_epoch=200, multiplier=1e-1, initial_lr=initial_lr
+        ),
     ]
 
     # Horovod: save checkpoints only on the first worker to prevent other workers from corrupting them.
@@ -382,11 +400,11 @@ if not flag_test:
         trainGene,
         validation_data=valGene,
         validation_freq=5,
-        validation_steps=100, # 0.41:178 0.25:633
+        validation_steps=100,  # 0.41:178 0.25:633
         steps_per_epoch=step_num // hvd.size(),
         epochs=num_epoches,
         initial_epoch=initial_epoch,
-        callbacks=callbacks
+        callbacks=callbacks,
     )
 
     print(time.time() - start)
@@ -440,9 +458,29 @@ for k in range(3, 100):
     # print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
 
     thresh_argmax_f1 = 0.5
-    iou = jaccard_score(Y.reshape(-1,) > 0, F.reshape(-1,) > thresh_argmax_f1)
+    iou = jaccard_score(
+        Y.reshape(
+            -1,
+        )
+        > 0,
+        F.reshape(
+            -1,
+        )
+        > thresh_argmax_f1,
+    )
     print("IOU= ", iou)
-    print(classification_report(Y.reshape(-1,) > 0, F.reshape(-1,) > thresh_argmax_f1))
+    print(
+        classification_report(
+            Y.reshape(
+                -1,
+            )
+            > 0,
+            F.reshape(
+                -1,
+            )
+            > thresh_argmax_f1,
+        )
+    )
 
     from sklearn.metrics import roc_curve, auc
 

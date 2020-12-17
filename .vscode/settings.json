@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "/home/cunyuan/anaconda3/envs/k/bin/python",
+    "python.pythonPath": "/home/8/19M18837/.pyenv/versions/jupyter/bin/python",
     "python.formatting.provider": "black"
 }
