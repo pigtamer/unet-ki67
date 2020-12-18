@@ -1,4 +1,8 @@
 {
+<<<<<<< HEAD
     "python.pythonPath": "/usr/local/Caskroom/miniconda/base/envs/k/bin/python",
+=======
+    "python.pythonPath": "/home/8/19M18837/.pyenv/versions/jupyter/bin/python",
+>>>>>>> f2ea9f264183975ec831a3648f06ca6eeded2bbd
     "python.formatting.provider": "black"
 }

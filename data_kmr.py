@@ -99,16 +99,16 @@ def folds(l_wsis=None, k=5):
         [type]: [description]
 
     l_wsis = [
-        "01_15-1052_Ki67_HE",   #   1   
-        "01_14-7015_Ki67_HE",      
-        "01_14-3768_Ki67_HE",   
+        "01_15-1052_Ki67_HE",   #   1
+        "01_14-7015_Ki67_HE",
+        "01_14-3768_Ki67_HE",
         "01_17-5256_Ki67_HE",   #   2
         "01_17-6747_Ki67_HE",
         "01_17-8107_Ki67_HE",
         "01_15-2502_Ki67_HE",   #   3
         "01_17-7885_Ki67_HE",
         "01_17-7930_Ki67_HE",
-    ] """
+    ]"""
 
     def create_divides(l, k):
         if len(l) % k == 0:
@@ -204,6 +204,7 @@ def load_kmr_tfdata(
     dataset_path,
     batch_size=16,
     wsi_ids=None,
+    cross_fold=None,
     stains=["HE", "Mask"],
     aug=False,
     image_color_mode="rgb",
@@ -227,8 +228,8 @@ def load_kmr_tfdata(
 
         img = tf.image.resize(img, [target_size[0], target_size[1]])
         # resize the image to the desired size.
-        # if aug:
-        #     img = augment(img)
+        if aug:
+            img = augment(img)
         return img
 
     def prepare_for_training(
@@ -257,46 +258,46 @@ def load_kmr_tfdata(
 
     data_generator = {}
     for staintype in stains:
-        if aug:
-            if staintype != "Mask":
+        if staintype != "Mask":
 
-                def augment(image, seed=seed):
-                    # Add 6 pixels of padding
-                    image = tf.image.resize_with_crop_or_pad(
-                        image, target_size[0] + 16, target_size[0] + 16
-                    )
-                    # Random crop back to the original size
-                    image = tf.image.random_crop(
-                        image, size=[target_size[0], target_size[0], 3], seed=seed
-                    )
-                    image = tf.image.random_brightness(
-                        image, max_delta=0.05, seed=seed
-                    )  # Random brightness
-                    image = tf.image.random_flip_left_right(image, seed=seed)
-                    image = tf.image.random_flip_up_down(image, seed=seed)
-                    return image
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(
+                    image, target_size[0] + 16, target_size[0] + 16
+                )
+                # Random crop back to the original size
+                image = tf.image.random_crop(
+                    image, size=[target_size[0], target_size[0], 3], seed=seed
+                )
+                image = tf.image.random_brightness(
+                    image, max_delta=0.05, seed=seed
+                )  # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
 
-            else:
+        else:
 
-                def augment(image, seed=seed):
-                    # Add 6 pixels of padding
-                    image = tf.image.resize_with_crop_or_pad(
-                        image, target_size[0] + 16, target_size[0] + 16
-                    )
-                    # Random crop back to the original size
-                    image = tf.image.random_crop(
-                        image, size=[target_size[0], target_size[0], 1], seed=seed
-                    )
-                    image = tf.image.random_brightness(
-                        image, max_delta=0.05, seed=seed
-                    )  # Random brightness
-                    image = tf.image.random_flip_left_right(image, seed=seed)
-                    image = tf.image.random_flip_up_down(image, seed=seed)
-                    return image
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(
+                    image, target_size[0] + 16, target_size[0] + 16
+                )
+                # Random crop back to the original size
+                image = tf.image.random_crop(
+                    image, size=[target_size[0], target_size[0], 1], seed=seed
+                )
+                image = tf.image.random_brightness(
+                    image, max_delta=0.05, seed=seed
+                )  # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
 
         dir_pattern = [
-            dataset_path + "/" + staintype + "/" + wsi + "*/Tiles/Tumor/*/*.png"
+            dataset_path + "/" + staintype + "/" + wsi + "*/Tiles/Tumor/" + foldnum + "/*"
             for wsi in wsi_ids
+            for foldnum in cross_fold
         ]
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
         list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
@@ -313,9 +314,7 @@ def load_kmr_tfdata(
             if isinstance(cache, str)
             else cache,
         )
-    train_generator = zip(
-        data_generator["HE"], data_generator["Mask"]
-    )  # TODO: adapt this line to params
+    train_generator = zip(data_generator["HE"], data_generator["Mask"])
     for (img, mask) in train_generator:
         yield (img, mask)
 

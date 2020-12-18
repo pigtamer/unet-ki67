@@ -6,11 +6,12 @@ from utils import jaccard_distance_loss
 
 # define model
 
-def denseunet(pretrained_weights=None, lr=1E-4):
-    model = sm.Unet('densenet121', encoder_weights='imagenet')
+
+def denseunet(pretrained_weights=None, lr=1e-4):
+    model = sm.Unet("densenet121", encoder_weights="imagenet")
 
     model.compile(
-        optimizer='adam',
+        optimizer="adam",
         loss=sm.losses.bce_jaccard_loss,
         metrics=[sm.metrics.iou_score],
     )
@@ -19,11 +20,15 @@ def denseunet(pretrained_weights=None, lr=1E-4):
     return model
 
 
-def unetxx(pretrained_weights=None, lr=1E-4):
-    model = Xnet(backbone_name='resnet50', encoder_weights=None, decoder_block_type='transpose')
-    model.compile(optimizer='adam',
-                  loss=jaccard_distance_loss,
-                  metrics=[sm.metrics.iou_score, 'accuracy'])
+def unetxx(pretrained_weights=None, lr=1e-4):
+    model = Xnet(
+        backbone_name="resnet50", encoder_weights=None, decoder_block_type="transpose"
+    )
+    model.compile(
+        optimizer="adam",
+        loss=jaccard_distance_loss,
+        metrics=[sm.metrics.iou_score, "accuracy"],
+    )
     if pretrained_weights:
         model.load_weights(pretrained_weights)
     return model

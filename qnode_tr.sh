@@ -1,0 +1,1 @@
+/home/8/19M18837/qnode_tr.sh
