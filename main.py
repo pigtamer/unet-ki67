@@ -112,7 +112,7 @@ bs_i = 1
 # step_num = 585891 // bs # all tumor
 # step_num = 162721 // bs # G1 tumor
 step_num = 466272 // bs  # G123 tumor, 3div
-verbose = 1
+verbose = 2
 
 checkpoint_period = 5
 flag_test, flag_continue = 0,0
@@ -173,6 +173,7 @@ lr_callback = LearningRateScheduler(lr_schedule)
 if mode != "mac":
     tensorboard_callback = TensorBoard(log_dir=logdir)
 
+# 563830
 ALL_WSI_IDS = [
             "01_14-7015_Ki67",  # 1 22091
             "01_17-5256_Ki67",  # 2 54923
