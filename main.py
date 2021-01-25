@@ -111,7 +111,8 @@ bs_i = 1
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
 # step_num = 162721 // bs # G1 tumor
-step_num = 466272 // bs  # G123 tumor, 3div
+# step_num = 466272 // bs  # G123 tumor, 3div 
+step_num = 468376 // bs  # 0.8 intra-slide
 verbose = 2
 
 checkpoint_period = 5
@@ -125,7 +126,7 @@ model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 data_name = "kmr-G1G2G3-9x3f8x2-123-aug"
 
-configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.h5" % (
+configstring = "%s_%s_%s_%s_%d_f000wf003ndx%d_lr%s.h5" % (
     framework,
     model_name,
     data_name,
@@ -192,15 +193,23 @@ fold = folds(
     ],
     k=3,
 )
+
+ALL_CROSS_FOLD_IDS = ["001", "002", "003", "004",  "006", "007", "008", "009", "005", "010"]
+
 cross_fold = [["001", "002", "003", "004",  "006", "007", "008", "009"], ["005", "010"]]
+cross_fold = [["001", "002", "003", "005",  "006", "007", "008", "010"], ["004", "009"]]
+cross_fold = [["001", "002", "004", "005",  "006", "007", "009", "010"], ["003", "008"]]
+cross_fold = [["001", "003", "004", "005",  "006", "008", "009", "010"], ["002", "007"]]
+cross_fold = [["002", "003", "004", "005",  "007", "008", "009", "010"], ["001", "006"]]
+
 print(fold[0][0])
 print(fold[0][1])
 print(fold[0][0] + fold[0][1])
 trainGene = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
-    cross_fold=cross_fold[0],
-    wsi_ids=ALL_WSI_IDS, # ex. fold[0][0]; ALL_WSI_IDS
+    cross_fold=ALL_CROSS_FOLD_IDS, # ex. cross_fold[0]; ALL_CROSS_FOLD_IDS
+    wsi_ids=fold[2][0], # ex. fold[0][0]; ALL_WSI_IDS
     aug=False,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
@@ -218,8 +227,8 @@ trainGene = load_kmr_tfdata(
 valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    cross_fold=cross_fold[1],
-    wsi_ids=fold[0][0],
+    cross_fold=ALL_CROSS_FOLD_IDS,
+    wsi_ids=fold[2][1],
     aug=False,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -247,7 +256,7 @@ if mode == "mac":
         target_size=test_size,
     )
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_wf003_ep%02d+{epoch:02d}.h5" % (
     framework,
     model_name,
     data_name,
