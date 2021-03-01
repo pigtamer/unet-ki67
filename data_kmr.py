@@ -29,18 +29,7 @@ import skimage.transform as trans
 
 from data import adjustData
 from model import *
-
-#%%
-# mode = "-mac"  # TODO: use argparse instead!!
-
-# if mode == "mac":
-#     # use plaidml backend for Mac OS
-#     os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
-
-# import keras
-# import keras.backend as K
-# from keras.preprocessing.image import ImageDataGenerator
-
+from utils import *
 
 """ 
 * 目录结构
@@ -82,121 +71,7 @@ TILES_(256, 256)/
                     <All 10 folds>      |
                         * ! images -----.------- Zipped one by one as tuples
 """
-
 from itertools import combinations as comb
-
-
-def folds(l_wsis=None, k=5):
-    """folds [summary]
-
-    [extended_summary]
-
-    Args:
-        l_wsis ([list], optional): [description]. Defaults to None.
-        k (int, optional): [description]. Defaults to 1.
-
-    Returns:
-        [type]: [description]
-
-    l_wsis = [
-        "01_15-1052_Ki67_HE",   #   1
-        "01_14-7015_Ki67_HE",
-        "01_14-3768_Ki67_HE",
-        "01_17-5256_Ki67_HE",   #   2
-        "01_17-6747_Ki67_HE",
-        "01_17-8107_Ki67_HE",
-        "01_15-2502_Ki67_HE",   #   3
-        "01_17-7885_Ki67_HE",
-        "01_17-7930_Ki67_HE",
-    ]"""
-
-    def create_divides(l, k):
-        if len(l) % k == 0:
-            n = len(l) // k
-        else:
-            n = len(l) // k + 1
-        res = [l[i * n : i * n + n] for i in range(k)]
-        if res[-1] == []:
-            n -= 1
-
-        return [l[i * n : i * n + n] for i in range(k)]
-
-    return [([x for x in l_wsis if x not in f], f) for f in create_divides(l_wsis, k)]
-
-
-def kmrGenerator(
-    dataset_path,
-    batch_size=4,
-    image_folder=None,
-    mask_folder=None,
-    aug_dict=None,
-    image_color_mode="rgb",
-    mask_color_mode="grayscale",
-    image_save_prefix="image",
-    mask_save_prefix="mask",
-    flag_multi_class=False,
-    num_class=2,
-    save_to_dir=None,
-    target_size=(256, 256),
-    seed=1,
-) -> tuple:
-    """kmrGenerator: Custom generator providing HE-DAB or HE-Mask pair for fit_generator
-
-    [extended_summary]
-
-    Args:
-        dataset_path ([string]): path of the dataset
-        batch_size (int, optional): batch size. Defaults to 4.
-        image_folder (list of strings, optional): folder for he stains. Defaults to None.
-        mask_folder (list of strings, optional): folder of masks or DABs. Defaults to None.
-        aug_dict (ditionary, optional): data augmentation arguments. Defaults to None.
-        image_color_mode (str, optional): color mode of the he images. Defaults to "rgb".
-        mask_color_mode (str, optional): color mode of masks/DAB. Defaults to "grayscale".
-        image_save_prefix (str, optional): [description]. Defaults to "image".
-        mask_save_prefix (str, optional): [description]. Defaults to "mask".
-        flag_multi_class (bool, optional): [description]. Defaults to False.
-        num_class (int, optional): number of classes. Defaults to 2.
-        save_to_dir ([type], optional): [description]. Defaults to None.
-        target_size (tuple, optional): 2-D size of training images. Defaults to (256, 256).
-        seed (int, optional): seed for random shuffling. Defaults to 1.
-
-    Returns:
-        tuple: yield pairs of HE image - Mask or DAB
-    """
-    he_datagen = ImageDataGenerator(**aug_dict)
-    dab_datagen = ImageDataGenerator(**aug_dict)
-
-    he_generator = he_datagen.flow_from_directory(
-        dataset_path + "HE/",
-        classes=image_folder,
-        class_mode=None,
-        color_mode=image_color_mode,
-        target_size=target_size,
-        batch_size=batch_size,
-        save_to_dir=save_to_dir,
-        save_prefix=image_save_prefix,
-        seed=seed,
-    )
-
-    dab_generator = dab_datagen.flow_from_directory(
-        dataset_path + "Mask/",
-        classes=image_folder,
-        class_mode=None,
-        color_mode=mask_color_mode,
-        target_size=target_size,
-        batch_size=batch_size,
-        save_to_dir=save_to_dir,
-        save_prefix=image_save_prefix,
-        seed=seed,
-    )
-    train_generator = zip(he_generator, dab_generator)
-    for (img, mask) in train_generator:
-        img, mask = adjustData(img, mask, flag_multi_class, num_class)
-        yield (img, mask)
-
-
-#%%
-# * 2. Cross validation
 
 # %%
 # * 3. Tf.data as input pipeline
@@ -207,13 +82,6 @@ def load_kmr_tfdata(
     cross_fold=None,
     stains=["HE", "Mask"],
     aug=False,
-    image_color_mode="rgb",
-    mask_color_mode="grayscale",
-    image_save_prefix="image",
-    mask_save_prefix="mask",
-    flag_multi_class=False,
-    num_class=2,
-    save_to_dir=None,
     target_size=(256, 256),
     seed=1,
     cache=None,
@@ -235,16 +103,11 @@ def load_kmr_tfdata(
     def prepare_for_training(
         ds, cache=cache, shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size
     ):
-        # If a small dataset, only load it once, and keep it in memory.
-        # use `.cache(filename)` to cache preprocessing work for datasets
-        # that don't fit in memory.
         if cache:
             if isinstance(cache, str):
                 ds = ds.cache(cache)
             else:
                 ds = ds.cache()
-        # ds = ds.shard(num_shards = hvd.size(),
-        #                 index = hvd.rank())
         ds = ds.shuffle(
             buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=False
         )
@@ -287,27 +150,30 @@ def load_kmr_tfdata(
                 image = tf.image.random_crop(
                     image, size=[target_size[0], target_size[0], 1], seed=seed
                 )
-                # image = tf.image.random_brightness(
-                #     image, max_delta=0.05, seed=seed
-                # )  # Random brightness
+
                 image = tf.image.random_flip_left_right(image, seed=seed)
                 image = tf.image.random_flip_up_down(image, seed=seed)
                 return image
 
         dir_pattern = [
-            dataset_path + "/" + staintype + "/" + wsi + "*/Tiles/Tumor/" + foldnum + "/*"
+            dataset_path
+            + "/"
+            + staintype
+            + "/"
+            + wsi
+            + "*/Tiles/Tumor/"
+            + foldnum
+            + "/*"
             for wsi in wsi_ids
             for foldnum in cross_fold
         ]
+
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
-        list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+        # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        # Set `num_parallel_calls` so that multiple images are
-        # processed in parallel
+
         labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
-        # cache = True, False, './file_name'
-        # If the dataset doesn't fit in memory use a cache file,
-        # eg. cache='./data.tfcache'
+
         data_generator[staintype] = prepare_for_training(
             labeled_ds,
             cache=(cache + "_%s_%d.tfcache" % (staintype, 1e10 * np.random.rand()))
@@ -315,21 +181,5 @@ def load_kmr_tfdata(
             else cache,
         )
     train_generator = zip(data_generator["HE"], data_generator["Mask"])
-    for (img, mask) in train_generator:
-        yield (img, mask)
-
-
-# train_gen = load_kmr_tfdata(
-#         "/home/cunyuan/4tb/Kimura/DATA/TILES_(256, 256)_0.41",
-#         ["01_15-1052_Ki67",   #   1
-#         "01_14-7015_Ki67",
-#         "01_14-3768_Ki67",
-#         "01_17-5256_Ki67",   #   2
-#         "01_17-6747_Ki67",
-#         "01_17-8107_Ki67",],
-#         ["IHC",
-#         "Mask"])
-
-# for img_pairs in train_gen:
-#     plt.figure(); plt.subplot(121);plt.imshow(img_pairs[1][0,:,:,:4])
-#     plt.subplot(122);plt.imshow(img_pairs[0][0,:,:,:4]);plt.show()
+    n = len(list_ds)
+    return (train_generator, n)

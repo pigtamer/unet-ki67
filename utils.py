@@ -147,3 +147,41 @@ def e2e_train(trainGene, valGene, model):
 
     """
     pass
+
+
+def folds(l_wsis=None, k=5):
+    """folds [summary]
+
+    [extended_summary]
+
+    Args:
+        l_wsis ([list], optional): [description]. Defaults to None.
+        k (int, optional): [description]. Defaults to 1.
+
+    Returns:
+        [type]: [description]
+
+    l_wsis = [
+        "01_15-1052_Ki67_HE",   #   1
+        "01_14-7015_Ki67_HE",
+        "01_14-3768_Ki67_HE",
+        "01_17-5256_Ki67_HE",   #   2
+        "01_17-6747_Ki67_HE",
+        "01_17-8107_Ki67_HE",
+        "01_15-2502_Ki67_HE",   #   3
+        "01_17-7885_Ki67_HE",
+        "01_17-7930_Ki67_HE",
+    ]"""
+
+    def create_divides(l, k):
+        if len(l) % k == 0:
+            n = len(l) // k
+        else:
+            n = len(l) // k + 1
+        res = [l[i * n : i * n + n] for i in range(k)]
+        if res[-1] == []:
+            n -= 1
+
+        return [l[i * n : i * n + n] for i in range(k)]
+
+    return [([x for x in l_wsis if x not in f], f) for f in create_divides(l_wsis, k)]
