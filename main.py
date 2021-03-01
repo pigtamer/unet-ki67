@@ -53,7 +53,7 @@ from sklearn.metrics import (
 # args = parser.parse_args()
 
 data_gen_args = dict(
-    rotation_range=360,
+    rotation_range=30, # do not rotate too much!!
     channel_shift_range=0,
     width_shift_range=0.05,
     height_shift_range=0.05,
@@ -104,28 +104,29 @@ target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
 bs = 32
-bs_v = 16
+bs_v = 32
 bs_i = 1
 # step_num = 33614 // bs # 0.41
 # step_num = 108051 // bs # 0.25
 # step_num = 33498 // bs
 # step_num = 585891 // bs # all tumor
 # step_num = 162721 // bs # G1 tumor
-step_num = 466272 // bs  # G123 tumor, 3div
-verbose = 1
+# step_num = 466272 // bs  # G123 tumor, 3div 
+step_num = 468376 // bs  # 0.8 intra-slide
+verbose = 2
 
 checkpoint_period = 5
-flag_test, flag_continue = 0, 0
+flag_test, flag_continue = 0,0
 flag_multi_gpu = 1
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 num_epoches = 300
 framework = "hvd-tfk"
-model_name = "dense121-unet"
+model_name = "unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr-G1G2G3-9x3f8x2-123-noaug"
+data_name = "kmr-G1G2G3-9x3f8x2-123-aug"
 
-configstring = "%s_%s_%s_%s_%d_ndx%d_lr%s.h5" % (
+configstring = "%s_%s_%s_%s_%d_f000wf003ndx%d_lr%s.h5" % (
     framework,
     model_name,
     data_name,
@@ -173,11 +174,8 @@ lr_callback = LearningRateScheduler(lr_schedule)
 if mode != "mac":
     tensorboard_callback = TensorBoard(log_dir=logdir)
 
-
-fold = folds(
-    l_wsis=[
-        k + ""
-        for k in [
+# 563830
+ALL_WSI_IDS = [
             "01_14-7015_Ki67",  # 1 22091
             "01_17-5256_Ki67",  # 2 54923
             "01_17-7885_Ki67",  # 3 42635 --> 466272
@@ -188,18 +186,30 @@ fold = folds(
             "01_17-8107_Ki67",  # 2 69097
             "01_17-7930_Ki67",  # 3 53195
         ]
+fold = folds(
+    l_wsis=[
+        k + ""
+        for k in ALL_WSI_IDS
     ],
     k=3,
 )
+
+ALL_CROSS_FOLD_IDS = ["001", "002", "003", "004",  "006", "007", "008", "009", "005", "010"]
+
 cross_fold = [["001", "002", "003", "004",  "006", "007", "008", "009"], ["005", "010"]]
+cross_fold = [["001", "002", "003", "005",  "006", "007", "008", "010"], ["004", "009"]]
+cross_fold = [["001", "002", "004", "005",  "006", "007", "009", "010"], ["003", "008"]]
+cross_fold = [["001", "003", "004", "005",  "006", "008", "009", "010"], ["002", "007"]]
+cross_fold = [["002", "003", "004", "005",  "007", "008", "009", "010"], ["001", "006"]]
+
 print(fold[0][0])
 print(fold[0][1])
 print(fold[0][0] + fold[0][1])
 trainGene = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
-    cross_fold=cross_fold[0],
-    wsi_ids=fold[0][0],
+    cross_fold=ALL_CROSS_FOLD_IDS, # ex. cross_fold[0]; ALL_CROSS_FOLD_IDS
+    wsi_ids=fold[2][0], # ex. fold[0][0]; ALL_WSI_IDS
     aug=False,
     image_color_mode="rgb",
     mask_color_mode="grayscale",
@@ -217,8 +227,8 @@ trainGene = load_kmr_tfdata(
 valGene = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    cross_fold=cross_fold[1],
-    wsi_ids=fold[0][0],
+    cross_fold=ALL_CROSS_FOLD_IDS,
+    wsi_ids=fold[2][1],
     aug=False,
     save_to_dir=None,
     image_color_mode="rgb",
@@ -246,7 +256,7 @@ if mode == "mac":
         target_size=test_size,
     )
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_wf003_ep%02d+{epoch:02d}.h5" % (
     framework,
     model_name,
     data_name,
@@ -268,17 +278,17 @@ continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
 )
 
 if flag_continue:
-    # model = unet(
-    #     pretrained_weights=continue_path,
-    #     input_size=(target_size[0], target_size[1], 3),
-    #     lr=lr,
-    #     multi_gpu=flag_multi_gpu,
-    #     loss=loss_name,
-    # )
+    model = unet(
+        pretrained_weights=continue_path,
+        input_size=(target_size[0], target_size[1], 3),
+        lr=lr,
+        multi_gpu=flag_multi_gpu,
+        loss=loss_name,
+    )
     # model = unetxx(pretrained_weights=continue_path,
     #                lr=lr)
-    sm.set_framework("tf.keras")
-    model = smunet(loss=loss_name, pretrained_weights=continue_path)
+    # sm.set_framework("tf.keras")
+    # model = smunet(loss=loss_name, pretrained_weights=continue_path)
 else:
     model = unet(
         pretrained_weights=None,
@@ -287,8 +297,8 @@ else:
         multi_gpu=flag_multi_gpu,
         loss=loss_name,
     )
-    sm.set_framework("tf.keras")
-    model = smunet(loss=loss_name)
+    # sm.set_framework("tf.keras")
+    # model = smunet(loss=loss_name)
 
 # plot_model(model, to_file="./model.svg")
 """
