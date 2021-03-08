@@ -40,8 +40,9 @@ valGene, n_val = load_kmr_tfdata(
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
 
 model = smunet(loss=loss_name)
-
+print(n_train)
 step_num = n_train // bs
+# step_num=100
 training_history = model.fit(
     trainGene,
     validation_data=valGene,
@@ -50,5 +51,5 @@ training_history = model.fit(
     steps_per_epoch=step_num,
     epochs=num_epoches,
     initial_epoch=initial_epoch,
-    callbacks=callbacks,
+    # callbacks=callbacks,
 )

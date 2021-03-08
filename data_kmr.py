@@ -126,11 +126,11 @@ def load_kmr_tfdata(
             def augment(image, seed=seed):
                 # Add 6 pixels of padding
                 image = tf.image.resize_with_crop_or_pad(
-                    image, target_size[0] + 16, target_size[0] + 16
+                    image, target_size[0] + 12, target_size[0] + 12
                 )
                 # Random crop back to the original size
                 image = tf.image.random_crop(
-                    image, size=[target_size[0], target_size[0], 3], seed=seed
+                    image, size=[target_size[0], target_size[0], 6], seed=seed
                 )
                 image = tf.image.random_brightness(
                     image, max_delta=0.01, seed=seed
@@ -144,11 +144,11 @@ def load_kmr_tfdata(
             def augment(image, seed=seed):
                 # Add 6 pixels of padding
                 image = tf.image.resize_with_crop_or_pad(
-                    image, target_size[0] + 16, target_size[0] + 16
+                    image, target_size[0] + 12, target_size[0] + 12
                 )
                 # Random crop back to the original size
                 image = tf.image.random_crop(
-                    image, size=[target_size[0], target_size[0], 1], seed=seed
+                    image, size=[target_size[0], target_size[0], 6], seed=seed
                 )
 
                 image = tf.image.random_flip_left_right(image, seed=seed)

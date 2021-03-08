@@ -1,11 +1,12 @@
 from utils import *
+import tensorflow as tf
 
-HOME_PATH = "/raid/ji/"
-train_path = HOME_PATH + "/DATA/TILES_(256, 256)/"
-val_path = HOME_PATH + "/DATA/TILES_(256, 256)/"
-test_path = HOME_PATH + "/DATA/test_1024/k/"
+HOME_PATH = "/raid/ji"
+train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
+val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
+test_path = HOME_PATH + "/DATA/test_1024/k"
 
-model_dir = HOME_PATH + "/models/"
+model_dir = HOME_PATH + "models/"
 
 seed = 1
 
@@ -15,7 +16,8 @@ edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
-bs = 32
+num_gpus=3
+bs = 64*num_gpus
 bs_v = 16
 verbose = 1
 

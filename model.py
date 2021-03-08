@@ -11,7 +11,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.losses import binary_crossentropy
-from tensorflow.keras.utils import multi_gpu_model
 from tensorflow.keras import losses, callbacks
 import tensorflow_io as tfio
 from tensorflow.keras.models import *
@@ -28,8 +27,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 import segmentation_models as sm
 
-opt = tf.optimizers.Adam(lr)
-
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
     "ja": sm.losses.jaccard_loss,
@@ -45,22 +42,26 @@ loss_dict = {
 
 #%%
 def smunet(loss="focal", pretrained_weights=None):
-    model = sm.Unet(
-        backbone_name="densenet121",
-        input_shape=(None, None, 3),
-        classes=1,
-        activation="sigmoid",
-        weights=None,
-        encoder_weights="imagenet",
-        encoder_freeze=False,
-        encoder_features="default",
-        decoder_block_type="upsampling",
-        decoder_filters=(256, 128, 64, 32, 16),
-        decoder_use_batchnorm=True,
-    )
-    model.compile(
-        optimizer=opt, loss=loss_dict[loss], metrics=[sm.metrics.iou_score, "accuracy"]
-    )
+    gpu_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:1", "/gpu:2", "/gpu:3"])
+    with  gpu_strategy.scope():
+        model = sm.Unet(
+            backbone_name="densenet121",
+            input_shape=(None, None, 3),
+            classes=1,
+            activation="sigmoid",
+            weights=None,
+            encoder_weights="imagenet",
+            encoder_freeze=False,
+            encoder_features="default",
+            decoder_block_type="upsampling",
+            decoder_filters=(256, 128, 64, 32, 16),
+            decoder_use_batchnorm=True,
+        )
+
+        opt = tf.optimizers.Adam(lr)
+        model.compile(
+            optimizer=opt, loss=loss_dict[loss], metrics=[sm.metrics.iou_score, "accuracy"]
+            )   
     if pretrained_weights:
         model.load_weights(pretrained_weights)
     return model
@@ -210,6 +211,7 @@ def unet(
         )
     else:
         model = Model(inputs=inputs, outputs=conv10)
+        
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
