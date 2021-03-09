@@ -1,12 +1,13 @@
 from utils import *
 import tensorflow as tf
+from datetime import datetime
 
 HOME_PATH = "/raid/ji"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 test_path = HOME_PATH + "/DATA/test_1024/k"
 
-model_dir = HOME_PATH + "models/"
+model_dir = HOME_PATH + "/models/"
 
 seed = 1
 
@@ -18,7 +19,7 @@ test_size = (2048, 2048)
 
 num_gpus=3
 bs = 64*num_gpus
-bs_v = 16
+bs_v = 64*num_gpus
 verbose = 1
 
 checkpoint_period = 5
@@ -88,6 +89,12 @@ continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
     lrstr,
     continue_step[0],
     continue_step[1],
+)
+
+logdir = (
+    HOME_PATH+ "/logs/scalars/"
+    + datetime.now().strftime("%Y%m%d-%H%M%S")
+    + configstring
 )
 
 data_gen_args = dict(

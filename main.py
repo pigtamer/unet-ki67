@@ -42,14 +42,31 @@ testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
 model = smunet(loss=loss_name)
 print(n_train)
 step_num = n_train // bs
-# step_num=100
+# step_num=10 # for test
+
+model_checkpoint = ModelCheckpoint(
+        model_path,
+        monitor="loss",
+        verbose=verbose,
+        save_best_only=False,
+        save_weights_only=False,
+        mode="auto",
+        save_freq=checkpoint_period * step_num,
+    )
+
+file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+file_writer.set_as_default()
+tensorboard_callback = TensorBoard(log_dir=logdir)
+callbacks = [model_checkpoint,tensorboard_callback]
+
+
 training_history = model.fit(
     trainGene,
     validation_data=valGene,
     validation_freq=5,
-    validation_steps=100,
+    validation_steps=n_val//bs_v,
     steps_per_epoch=step_num,
     epochs=num_epoches,
     initial_epoch=initial_epoch,
-    # callbacks=callbacks,
+    callbacks=callbacks,
 )
