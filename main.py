@@ -57,8 +57,17 @@ model_checkpoint = ModelCheckpoint(
 file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
 tensorboard_callback = TensorBoard(log_dir=logdir)
-callbacks = [model_checkpoint,tensorboard_callback]
+callbacks = [hvd.callbacks.BroadcastGlobalVariablesCallback(0),
 
+        hvd.callbacks.MetricAverageCallback(),
+
+        hvd.callbacks.LearningRateWarmupCallback(
+            warmup_epochs=5, initial_lr=lr, verbose=verbose
+        )]
+
+if hvd.rank() == 0:
+    callbacks.append(model_checkpoint)
+    callbacks.append(tensorboard_callback)
 
 training_history = model.fit(
     trainGene,
