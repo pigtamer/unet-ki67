@@ -3,7 +3,7 @@ from utils import *
 import tensorflow as tf
 from datetime import datetime
 
-HOME_PATH = "/raid/ji"
+HOME_PATH = "/gs/hs0/tga-yamaguchi.m/"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 test_path = HOME_PATH + "/DATA/test_1024/k"
