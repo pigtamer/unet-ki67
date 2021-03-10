@@ -1,3 +1,4 @@
+#%%
 from utils import *
 import tensorflow as tf
 from datetime import datetime
@@ -31,7 +32,7 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 100
+num_epoches = 200
 
 framework = "hvd-tfk"
 
@@ -39,7 +40,7 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-data_name = "kmr-G1G2G3-9x3f8x2-123-noaug"
+data_name = "kmr-intrainG1-xfold5n10-noaug"
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,
@@ -69,6 +70,12 @@ fold = folds(
 )
 cross_fold = [["001", "002", "003", "004",  "006", "007", "008", "009"], ["005", "010"]]
 
+fold = {
+    "G1": ["01_14-7015_Ki67", "01_15-1052_Ki67", "01_14-3768_Ki67"],
+    "G2": ["01_17-5256_Ki67", "01_17-6747_Ki67", "01_17-8107_Ki67"],
+    "G3": ["01_17-7885_Ki67", "01_15-2502_Ki67", "01_17-7930_Ki67"],
+}
+foldmat = np.vstack([fold[key] for key in fold.keys()])
 
 model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
     framework,
@@ -108,3 +115,4 @@ data_gen_args = dict(
     vertical_flip=True,
     fill_mode="constant",
 )
+# %%
