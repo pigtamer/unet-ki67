@@ -10,6 +10,9 @@ import numpy as np
 
 import tensorflow as tf
 from tensorflow import keras
+
+import horovod.tensorflow.keras as hvd
+
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras import losses, callbacks
 import tensorflow_io as tfio
@@ -27,6 +30,19 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 import segmentation_models as sm
 
+hvd.init()
+
+# Pin GPU to be used to process local rank (one GPU per process)
+gpus = tf.config.experimental.list_physical_devices("GPU")
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+if gpus:
+    tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], "GPU")
+
+opt = tf.optimizers.Adam(lr * hvd.size())
+# Horovod: add Horovod DistributedOptimizer.
+opt = hvd.DistributedOptimizer(opt)
+
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
     "ja": sm.losses.jaccard_loss,
@@ -42,26 +58,23 @@ loss_dict = {
 
 #%%
 def smunet(loss="focal", pretrained_weights=None):
-    gpu_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:1", "/gpu:2", "/gpu:3"])
-    with  gpu_strategy.scope():
-        model = sm.Unet(
-            backbone_name="densenet121",
-            input_shape=(None, None, 3),
-            classes=1,
-            activation="sigmoid",
-            weights=None,
-            encoder_weights="imagenet",
-            encoder_freeze=False,
-            encoder_features="default",
-            decoder_block_type="upsampling",
-            decoder_filters=(256, 128, 64, 32, 16),
-            decoder_use_batchnorm=True,
-        )
 
-        opt = tf.optimizers.Adam(lr)
-        model.compile(
-            optimizer=opt, loss=loss_dict[loss], metrics=[sm.metrics.iou_score, "accuracy"]
-            )   
+    model = sm.Unet(
+        backbone_name="densenet121",
+        input_shape=(None, None, 3),
+        classes=1,
+        activation="sigmoid",
+        weights=None,
+        encoder_weights="imagenet",
+        encoder_freeze=False,
+        encoder_features="default",
+        decoder_block_type="upsampling",
+        decoder_filters=(256, 128, 64, 32, 16),
+        decoder_use_batchnorm=True,
+    )
+    model.compile(
+        optimizer=opt, loss=loss_dict[loss], metrics=[sm.metrics.iou_score, "accuracy"]
+    )
     if pretrained_weights:
         model.load_weights(pretrained_weights)
     return model

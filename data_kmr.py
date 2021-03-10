@@ -169,7 +169,7 @@ def load_kmr_tfdata(
         ]
 
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
-        # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+        list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         AUTOTUNE = tf.data.experimental.AUTOTUNE
 
         labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
