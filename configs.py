@@ -32,7 +32,7 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 200
+num_epoches = 55
 
 framework = "hvd-tfk"
 
@@ -40,7 +40,8 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-data_name = "kmr-intrainG1-xfold5n10-noaug"
+# data_name = "kmr-intrainALLg2-xfold5n10-noaug"
+data_name = "kmr-G01-G2w1-xfold5n10-noaug"
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,
