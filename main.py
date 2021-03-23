@@ -18,8 +18,8 @@ from sklearn.metrics import (
 trainGene, n_train = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
-    cross_fold=cross_fold[0]+cross_fold[1],
-    wsi_ids=foldmat[:2, :].ravel(),
+    cross_fold=cross_fold[0],
+    wsi_ids=np.hstack([foldmat[0, 1], foldmat[0, 2]]).ravel(),
     aug=False,
     target_size=target_size,
     cache=False,
@@ -29,8 +29,8 @@ trainGene, n_train = load_kmr_tfdata(
 valGene, n_val = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    cross_fold=cross_fold[0]+cross_fold[1],
-    wsi_ids=foldmat[2, 1].ravel(),
+    cross_fold=cross_fold[1],
+    wsi_ids=foldmat[0, 0].ravel(),
     aug=False,
     cache=False,
     shuffle_buffer_size=128,
@@ -63,7 +63,8 @@ callbacks = [hvd.callbacks.BroadcastGlobalVariablesCallback(0),
 
         hvd.callbacks.LearningRateWarmupCallback(
             warmup_epochs=5, initial_lr=lr, verbose=verbose
-        )]
+        )
+        ]
 
 if hvd.rank() == 0:
     callbacks.append(model_checkpoint)

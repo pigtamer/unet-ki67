@@ -41,7 +41,7 @@ model_name = "dense121-unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
 # data_name = "kmr-intrainALLg2-xfold5n10-noaug"
-data_name = "kmr-G01-G2w1-xfold5n10-noaug"
+data_name = "kmr-G0i0t-xfold5n10-noaug"
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,
