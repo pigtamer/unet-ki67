@@ -19,7 +19,7 @@ trainGene, n_train = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
     cross_fold=cross_fold[0],
-    wsi_ids=foldmat[:2, :].ravel(),
+    wsi_ids=np.hstack([foldmat[0, 1], foldmat[0, 2]]).ravel(),
     aug=False,
     target_size=target_size,
     cache=False,
@@ -30,7 +30,7 @@ valGene, n_val = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
     cross_fold=cross_fold[1],
-    wsi_ids=foldmat[0, :],
+    wsi_ids=foldmat[0, 0],
     aug=False,
     cache=False,
     shuffle_buffer_size=128,
@@ -39,7 +39,8 @@ valGene, n_val = load_kmr_tfdata(
 
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
 
-model = smunet(loss=loss_name)
+#model = smunet(loss=loss_name)
+model=unet(loss=loss_name)
 print(n_train)
 step_num = n_train // bs
 # step_num=10 # for test
@@ -59,14 +60,16 @@ file_writer.set_as_default()
 tensorboard_callback = TensorBoard(log_dir=logdir)
 callbacks = [model_checkpoint,tensorboard_callback]
 
-
-training_history = model.fit(
-    trainGene,
-    validation_data=valGene,
-    validation_freq=5,
-    validation_steps=n_val//bs_v,
-    steps_per_epoch=step_num,
-    epochs=num_epoches,
-    initial_epoch=initial_epoch,
-    callbacks=callbacks,
-)
+if not flag_test:
+    training_history = model.fit(
+        trainGene,
+        validation_data=valGene,
+        validation_freq=5,
+        validation_steps=n_val//bs_v,
+        steps_per_epoch=step_num,
+        epochs=num_epoches,
+        initial_epoch=initial_epoch,
+        callbacks=callbacks,
+    )
+else:
+    pass

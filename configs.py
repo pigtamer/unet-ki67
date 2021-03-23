@@ -18,12 +18,13 @@ edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
-num_gpus=3
-bs = 64*num_gpus
-bs_v = 64*num_gpus
+DEVICES=["/gpu:1", "/gpu:2"]
+num_gpus=len(DEVICES)
+bs = 32*num_gpus
+bs_v = 32*num_gpus
 verbose = 1
 
-checkpoint_period = 5
+checkpoint_period = 1
 
 flag_test = 0
 flag_multi_gpu = 0
@@ -32,7 +33,7 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 200
+num_epoches = 55
 
 framework = "hvd-tfk"
 
@@ -40,7 +41,7 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-data_name = "kmr-intrainG1-xfold5n10-noaug"
+data_name = "kmr-G0i0t-xfold5n10-noaug64cr"
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,
