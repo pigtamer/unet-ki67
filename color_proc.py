@@ -127,18 +127,18 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
 
             chip = im_in[:, i * net_sizein:(i + 1) * net_sizein,
                    j * net_sizein:(j + 1) * net_sizein,
-                   :].reshape(1, net_sizein, net_sizein, 3)*li_mask_chip
+                   :3].numpy().reshape(1, net_sizein, net_sizein, 3)*li_mask_chip
             dchip = label[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
-                    0].reshape(1, net_sizein, net_sizein, 1)*li_mask_chip
+                    0].numpy().reshape(1, net_sizein, net_sizein, 1)*li_mask_chip
             nchip = nuclei[0, i * net_sizein:(i + 1) * net_sizein,
                     j * net_sizein:(j + 1) * net_sizein,
-                    0].reshape(1, net_sizein, net_sizein, 1) / 255*li_mask_chip
+                    0].numpy().reshape(1, net_sizein, net_sizein, 1) / 255*li_mask_chip
 
             mask = net.predict(chip)[0, :, :, 0].reshape(1, net_sizein, net_sizein, 1)*li_mask_chip
 
-            iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
-            f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            # iou += jaccard_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
+            # f1 += f1_score(dchip.reshape(-1, ) > 0, mask.reshape(-1, ) > 0.6)
             chip = chip[0, :, :, :]
             nchip = nchip[0, :, :, 0]
             dchip = dchip[0, :, :, 0]
@@ -146,23 +146,29 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
             """
             Morphology regional evaluation
             """
-            exkernel = np.ones((5, 5), np.uint8)
-            nuclei_ = cv.morphologyEx(nchip, cv.MORPH_OPEN, exkernel).astype(np.uint8)
-            label_ = dchip.astype(np.uint8)
-            pred_ = (mask > 0.6).astype(np.uint8)
-            pred_ = cv.morphologyEx(pred_, cv.MORPH_OPEN, exkernel)
-            label_ = label_ * nuclei_
+            nuclei_=0
+            label_ = 0
+            pred_ = 0
+            # exkernel = np.ones((5, 5), np.uint8)
+            # nuclei_ = cv.morphologyEx(nchip, cv.MORPH_OPEN, exkernel).astype(np.uint8)
+            # label_ = dchip.astype(np.uint8)
+            # pred_ = (mask > 0.6).astype(np.uint8)
+            # pred_ = cv.morphologyEx(pred_, cv.MORPH_OPEN, exkernel)
+            # label_ = label_ * nuclei_
 
-            tp_map = (label_ * pred_).astype(np.uint8)
-            pred_map = (nuclei_ * pred_).astype(np.uint8)
+            # tp_map = (label_ * pred_).astype(np.uint8)
+            # pred_map = (nuclei_ * pred_).astype(np.uint8)
 
-            num_tp += cntAna(label_, tp_map)
-            num_positive += cntAna(nuclei_, label_)
-            num_pred += cntAna(nuclei_, pred_map)
+            # num_tp += cntAna(label_, tp_map)
+            # num_positive += cntAna(nuclei_, label_)
+            # num_pred += cntAna(nuclei_, pred_map)
 
             # ncts, _ = cv.findContours(tp_map, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
             # ncts_tp, _ = cv.findContours(tp_map, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+            """
             ncts_allnuc, _ = cv.findContours(nuclei_, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+            """
+            ncts_allnuc = []
             # ncts_lbl, _ = cv.findContours(label_, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
             # ncts_pred, _ = cv.findContours(pred_, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
 
@@ -176,10 +182,10 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
             num_fn = num_positive - num_tp
             num_fp = num_pred - num_tp
 
-            if num_all != 0:
-                ka += 1
-                if num_positive != 0 and num_pred != 0:
-                    kp += 1
+            # if num_all != 0:
+            #     ka += 1
+            #     if num_positive != 0 and num_pred != 0:
+            #         kp += 1
                     # pprecision += num_tp / num_pred
                     # precall += num_tp / num_positive
                 # elif num_positive == 0:
@@ -212,17 +218,17 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
             res_set[i * net_sizein:(i + 1) * net_sizein,
             j * net_sizein:(j + 1) * net_sizein, 2] = nuclei_ * 255
 
-    if num_pred != 0 and num_positive != 0 and num_all != 0:
-        pprecision = num_tp / num_pred
-        precall = num_tp / num_positive
-        acc_regional = (num_tp + num_tn) / num_all
+    # if num_pred != 0 and num_positive != 0 and num_all != 0:
+    #     pprecision = num_tp / num_pred
+    #     precall = num_tp / num_positive
+    #     acc_regional = (num_tp + num_tn) / num_all
 
         # print("=-=" * 10)
         # print("Overall acc%f" % (acc_regional))
         # print("Precision: %f\nRecall %f\n" % (
         #     pprecision, precall))
-    lbi = num_pred / (num_all + 1E-6)
-    lbi_true = num_positive / (num_all+1E-6)
+    # lbi = num_pred / (num_all + 1E-6)
+    # lbi_true = num_positive / (num_all+1E-6)
     # print("---" * 10, "\nLabelling index: [True] %3.2f [Ours] %3.2f" % (lbi_true, lbi))
     # plt.figure(figsize=(6, 6))
     # plt.imshow(res_set);
@@ -235,19 +241,4 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
     # print(iou, f1)
     res = hecconv(res, H_ki67)
     res = np.clip(res, 0, 1)
-    fig = plt.figure(figsize=(20, 20))
-    plt.imshow(res)
-    plt.axis("off")
-    fig.tight_layout()
-    plt.show()
-    fig = plt.figure(figsize=(20, 20))
-    plt.imshow(nuclei[0])
-    plt.axis("off")
-    fig.tight_layout()
-    plt.show()
-    fig = plt.figure(figsize=(20, 20))
-    plt.imshow(im_in[0])
-    plt.axis("off")
-    fig.tight_layout()
-    plt.show()
     return (num_tp, num_tn, num_pred, num_npred, num_positive, num_negative, iou, res)

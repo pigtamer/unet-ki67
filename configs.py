@@ -6,7 +6,7 @@ from datetime import datetime
 HOME_PATH = "/raid/ji"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
-test_path = HOME_PATH + "/DATA/test_1024/k"
+test_path = HOME_PATH + "/DATA/TILES_(2048, 2048)"
 
 model_dir = HOME_PATH + "/models/"
 
@@ -18,15 +18,20 @@ edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
-DEVICES=["/gpu:1", "/gpu:2"]
+DEVICES=[
+    "gpu:0", 
+"/gpu:1", 
+# "gpu:2",
+# "/gpu:3",
+]
 num_gpus=len(DEVICES)
-bs = 32*num_gpus
-bs_v = 32*num_gpus
+bs = 64*num_gpus
+bs_v = 64*num_gpus
 verbose = 1
 
-checkpoint_period = 1
+checkpoint_period = 5
 
-flag_test = 0
+flag_test = 1
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -41,7 +46,7 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-data_name = "kmr-G0i0t-xfold5n10-noaug64cr"
+data_name = "kmr-intrainALLg0-xfold5n10-noaug"
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,

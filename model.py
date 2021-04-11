@@ -1,6 +1,6 @@
 from configs import *
 from utils import *
-
+from kdeeplabv3.model import Deeplabv3
 import numpy as np
 import os
 
@@ -66,20 +66,42 @@ def smunet(loss="focal", pretrained_weights=None):
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, "accuracy"],
+            metrics=[sm.metrics.iou_score, 
+            CohenKappaImg(num_classes=2, sparse_labels=True),
+            "accuracy"],
         )
     if pretrained_weights:
         model.load_weights(pretrained_weights)
     return model
 
-
+def deeplab(loss="focal",
+    input_size=(256, 256, 3),
+    lr=1e-3,
+    classes = 1,
+    pretrained_weights=None,
+):
+    gpu_strategy = tf.distribute.MirroredStrategy(
+            devices=DEVICES,
+            cross_device_ops=tf.distribute.NcclAllReduce()
+        )
+    with gpu_strategy.scope():
+        model = Deeplabv3(input_shape=input_size, classes=classes)
+        opt = tf.optimizers.Adam(lr)
+        model.compile(
+            optimizer=opt,
+            loss=loss_dict[loss],
+            metrics=[sm.metrics.iou_score, "accuracy"],
+        )
+    if pretrained_weights:
+        model.load_weights(pretrained_weights)
+    return model
 #%%
 def unet(
     loss="focal",
     input_size=(256, 256, 3),
     lr=1e-3,
     pretrained_weights=None,
-    pl=[16,32,64,128,256]
+    pl=[16,32,64,128,1024]
 ):
     gpu_strategy = tf.distribute.MirroredStrategy(
         devices=DEVICES,
@@ -103,10 +125,10 @@ def unet(
 
         inputs = Input(input_size)
         conv1 = Conv2D(
-            pl[-1], 3, activation="relu", padding="same", kernel_initializer="he_normal"
+            pl[0], 3, activation="relu", padding="same", kernel_initializer="he_normal"
         )(inputs)
         conv1 = Conv2D(
-            pl[-1], 3, activation="relu", padding="same", kernel_initializer="he_normal"
+            pl[0], 3, activation="relu", padding="same", kernel_initializer="he_normal"
         )(conv1)
         conv1 = BatchNormalization()(conv1)
         pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)

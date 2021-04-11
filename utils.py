@@ -1,9 +1,10 @@
 # from keras import backend as K
-# import tensorflow as tf
+import tensorflow as tf
+from configs import *
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
-
+import tensorflow_addons as tfa
 
 # focal loss
 
@@ -185,3 +186,21 @@ def folds(l_wsis=None, k=5):
         return [l[i * n : i * n + n] for i in range(k)]
 
     return [([x for x in l_wsis if x not in f], f) for f in create_divides(l_wsis, k)]
+
+class CohenKappaImg(tfa.metrics.CohenKappa):
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        """Accumulates the confusion matrix condition statistics.
+        Args:
+            y_true: Labels assigned by the first annotator with shape
+            `[num_samples,]`.
+            y_pred: Labels assigned by the second annotator with shape
+            `[num_samples,]`. The kappa statistic is symmetric,
+            so swapping `y_true` and `y_pred` doesn't change the value.
+            sample_weight (optional): for weighting labels in confusion matrix
+            Defaults to `None`. The dtype for weights should be the same
+            as the dtype for confusion matrix. For more details,
+            please check `tf.math.confusion_matrix`.
+        Returns:
+            Update op.
+        """
+        return self._update(tf.reshape(y_true, [-1]), tf.reshape(y_pred , [-1]), sample_weight)

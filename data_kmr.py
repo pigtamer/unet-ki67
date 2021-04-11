@@ -90,6 +90,7 @@ def load_kmr_tfdata(
     def parse_image(file_path):
         img = tf.io.read_file(file_path)
         # convert the compressed string to a 3D uint8 tensor
+
         img = tf.io.decode_png(img, channels=3)
 
         img = tf.image.convert_image_dtype(img, tf.float32)
@@ -99,7 +100,19 @@ def load_kmr_tfdata(
         if aug:
             img = augment(img)
         return img
+    def parse_mask(file_path):
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
 
+        img = tf.io.decode_png(img, channels=1)
+
+        img = tf.image.convert_image_dtype(img, tf.float32)
+
+        img = tf.image.resize(img, [target_size[0], target_size[1]])
+        # resize the image to the desired size.
+        if aug:
+            img = augment(img)
+        return img
     def prepare_for_training(
         ds, cache=cache, shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size
     ):
@@ -171,8 +184,10 @@ def load_kmr_tfdata(
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-
-        labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
+        if staintype != "Mask":
+            labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
+        else:
+            labeled_ds = list_ds.map(parse_mask, num_parallel_calls=AUTOTUNE)
 
         data_generator[staintype] = prepare_for_training(
             labeled_ds,
@@ -181,5 +196,94 @@ def load_kmr_tfdata(
             else cache,
         )
     train_generator = zip(data_generator["HE"], data_generator["Mask"])
+    n = len(list_ds)
+    return (train_generator, n)
+
+
+# %%
+# * 3. Tf.data as input pipeline
+def load_kmr_test(
+    dataset_path,
+    batch_size=1,
+    wsi_ids=None,
+    cross_fold=None,
+    stains=["HE", "Mask", "IHC"],
+    aug=False,
+    target_size=(2048, 2048),
+    seed=1,
+    cache=None,
+    shuffle_buffer_size=128,
+) -> tuple:
+    def parse_image(file_path):
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
+
+        img = tf.io.decode_png(img, channels=3)
+
+        img = tf.image.convert_image_dtype(img, tf.float32)
+
+        img = tf.image.resize(img, [target_size[0], target_size[1]])
+        # resize the image to the desired size.
+        return img
+
+    def parse_tiff(file_path):
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
+        img = tfio.experimental.image.decode_tiff(img)
+
+        img = tf.image.convert_image_dtype(img, tf.float32)
+
+        img = tf.image.resize(img, [target_size[0], target_size[1]])
+        # resize the image to the desired size.
+        return img
+
+    def prepare_for_training(
+        ds, cache=cache, shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size
+    ):
+        if cache:
+            if isinstance(cache, str):
+                ds = ds.cache(cache)
+            else:
+                ds = ds.cache()
+        # Repeat forever
+        ds = ds.repeat()
+        ds = ds.batch(batch_size)
+        ds = ds.prefetch(buffer_size=AUTOTUNE)
+        return ds
+
+    data_generator = {}
+    for staintype in stains:
+        dir_pattern = [
+            dataset_path
+            + "/"
+            + staintype
+            + "/"
+            + wsi
+            + "*/Tiles/Tumor/"
+            + foldnum
+            + "/*"
+            for wsi in wsi_ids
+            for foldnum in cross_fold
+        ]
+
+        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=False, seed=seed)
+        # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+        AUTOTUNE = tf.data.experimental.AUTOTUNE
+        if staintype != "Mask":
+            labeled_ds = list_ds.map(parse_tiff, num_parallel_calls=AUTOTUNE)
+        else:
+            labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
+
+        data_generator[staintype] = prepare_for_training(
+            labeled_ds,
+            cache=(cache + "_%s_%d.tfcache" % (staintype, 1e10 * np.random.rand()))
+            if isinstance(cache, str)
+            else cache,
+        )
+    train_generator = zip(
+        data_generator["HE"],
+        data_generator["Mask"],
+        data_generator["IHC"],
+    )
     n = len(list_ds)
     return (train_generator, n)
