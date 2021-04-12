@@ -85,12 +85,17 @@ def deeplab(loss="focal",
             cross_device_ops=tf.distribute.NcclAllReduce()
         )
     with gpu_strategy.scope():
-        model = Deeplabv3(input_shape=input_size, classes=classes)
+        model = Deeplabv3(input_shape=input_size, 
+        # backbone="xception",
+        activation="sigmoid",
+        classes=classes)
         opt = tf.optimizers.Adam(lr)
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, "accuracy"],
+            metrics=[sm.metrics.iou_score, 
+            CohenKappaImg(num_classes=2, sparse_labels=True),
+            "accuracy"],
         )
     if pretrained_weights:
         model.load_weights(pretrained_weights)

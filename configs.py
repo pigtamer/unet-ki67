@@ -21,8 +21,8 @@ test_size = (2048, 2048)
 DEVICES=[
     "gpu:0", 
 "/gpu:1", 
-# "gpu:2",
-# "/gpu:3",
+"gpu:2",
+"/gpu:3",
 ]
 num_gpus=len(DEVICES)
 bs = 64*num_gpus
@@ -31,7 +31,7 @@ verbose = 1
 
 checkpoint_period = 5
 
-flag_test = 1
+flag_test = 0
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -42,7 +42,8 @@ num_epoches = 55
 
 framework = "hvd-tfk"
 
-model_name = "dense121-unet"
+model_name = "deeplabv3"
+# model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 

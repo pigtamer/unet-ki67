@@ -20,7 +20,8 @@ trainGene, n_train = load_kmr_tfdata(
     batch_size=bs,
     cross_fold=cross_fold[0],
     # wsi_ids=np.hstack([foldmat[0, :]]).ravel(),
-    wsi_ids=[foldmat[0, 0],],
+    # wsi_ids=[foldmat[0, 0],],
+    wsi_ids=foldmat.ravel(),
     aug=False,
     target_size=target_size,
     cache=False,
@@ -31,6 +32,7 @@ valGene, n_val = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
     cross_fold=cross_fold[1],
+    # wsi_ids=foldmat.ravel(),
     wsi_ids=[foldmat[2, 0],],
     aug=False,
     cache=False,
@@ -70,7 +72,7 @@ file_writer.set_as_default()
 tensorboard_callback = TensorBoard(log_dir=logdir)
 callbacks = [model_checkpoint,tensorboard_callback]
 
-model = smunet(loss=loss_name)
+model = deeplab(loss=loss_name, lr = lr, )
 
 if not flag_test:
     training_history = model.fit(
