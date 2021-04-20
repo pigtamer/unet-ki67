@@ -20,9 +20,9 @@ test_size = (2048, 2048)
 
 DEVICES=[
     "gpu:0", 
-"/gpu:1", 
-"gpu:2",
-"/gpu:3",
+# "/gpu:1", 
+# "gpu:2",
+# "/gpu:3",
 ]
 num_gpus=len(DEVICES)
 bs = 64*num_gpus
@@ -38,16 +38,17 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 55
+num_epoches = 100
 
 framework = "hvd-tfk"
 
-model_name = "deeplabv3"
-# model_name = "dense121-unet"
+# model_name = "deeplabv3xcept"
+model_name = "dense121-unet"
 
-loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
+loss_name = "l1"  # focalja, bce, bceja, ja, dice...
 
-data_name = "kmr-intrainALLg0-xfold5n10-noaug"
+# data_name = "kmr-intrainALLg0-xfold5n10-noaug"
+data_name = "kmr-G0t0iii-xfold5n10-noaug"
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,

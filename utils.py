@@ -14,9 +14,8 @@ def viewim(im, cmap="gray"):
     plt.show()
 
 
-def focal_loss(gamma=2.0, alpha=0.25):
+def focal_loss(gamma=10.0, alpha=0.25):
     # import tensorflow as tf
-
     def focal_loss_fixed(y_true, y_pred):
         pt_1 = tf.where(K.equal(y_true, 1), y_pred, K.ones_like(y_pred))
         pt_0 = tf.where(K.equal(y_true, 0), y_pred, K.zeros_like(y_pred))

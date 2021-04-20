@@ -27,11 +27,12 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 import segmentation_models as sm
 
+model_dict = {}
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
-    "focalxja": sm.losses.binary_focal_loss+sm.losses.jaccard_loss,
+    "focal10ja": sm.losses.BinaryFocalLoss(alpha=0.02, gamma=100)+sm.losses.jaccard_loss,
     "ja": sm.losses.jaccard_loss,
-    "focal": sm.losses.binary_focal_loss,
+    "focal": sm.losses.BinaryFocalLoss(alpha=0.1, gamma=2),
     "bce": sm.losses.binary_crossentropy,
     "focalja": sm.losses.binary_focal_jaccard_loss,
     "focaldice": sm.losses.binary_focal_dice_loss,
@@ -78,6 +79,7 @@ def deeplab(loss="focal",
     input_size=(256, 256, 3),
     lr=1e-3,
     classes = 1,
+    os=8,
     pretrained_weights=None,
 ):
     gpu_strategy = tf.distribute.MirroredStrategy(
@@ -86,8 +88,9 @@ def deeplab(loss="focal",
         )
     with gpu_strategy.scope():
         model = Deeplabv3(input_shape=input_size, 
-        # backbone="xception",
+        backbone="xception",
         activation="sigmoid",
+        OS=os,
         classes=classes)
         opt = tf.optimizers.Adam(lr)
         model.compile(

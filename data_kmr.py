@@ -184,7 +184,7 @@ def load_kmr_tfdata(
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        if staintype != "Mask":
+        if staintype != "IHC" and staintype != "Mask":
             labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
         else:
             labeled_ds = list_ds.map(parse_mask, num_parallel_calls=AUTOTUNE)
@@ -195,7 +195,7 @@ def load_kmr_tfdata(
             if isinstance(cache, str)
             else cache,
         )
-    train_generator = zip(data_generator["HE"], data_generator["Mask"])
+    train_generator = zip(data_generator[stains[0]], data_generator[stains[1]])
     n = len(list_ds)
     return (train_generator, n)
 
