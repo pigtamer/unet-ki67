@@ -86,6 +86,7 @@ def load_kmr_tfdata(
     seed=1,
     cache=None,
     shuffle_buffer_size=128,
+    num_shards = 1
 ) -> tuple:
     def parse_image(file_path):
         img = tf.io.read_file(file_path)
@@ -182,13 +183,21 @@ def load_kmr_tfdata(
         ]
 
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
+        # -------------- >>
+        # ⬇️ Horovod 的残留代码。在Tsubame的不同worker上，其rank不同。
+        # 因此，数据的不同部分被均分到各个节点
+        # -------------- 
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+        # -------------- <<
+
+        list_ds = list_ds.shard(num_shards=num_shards, index=0)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        if staintype != "IHC" and staintype != "Mask":
+        if staintype != "DAB" and staintype != "Mask":
             labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
         else:
             labeled_ds = list_ds.map(parse_mask, num_parallel_calls=AUTOTUNE)
-
+        # 有问题。如果说shuffle的步骤在shard之后，那么shard的可能只有一个case
+        # 有在全局首先shuffle的方法吗？
         data_generator[staintype] = prepare_for_training(
             labeled_ds,
             cache=(cache + "_%s_%d.tfcache" % (staintype, 1e10 * np.random.rand()))
@@ -255,21 +264,22 @@ def load_kmr_test(
     for staintype in stains:
         dir_pattern = [
             dataset_path
-            + "/"
+            + "/"            
             + staintype
             + "/"
-            + wsi
-            + "*/Tiles/Tumor/"
-            + foldnum
-            + "/*"
-            for wsi in wsi_ids
-            for foldnum in cross_fold
+            + "*"
+            # + wsi
+            # + "*/Tiles/Tumor/"
+            # + foldnum
+            # + "/*"
+            # for wsi in wsi_ids
+            # for foldnum in cross_fold
         ]
 
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=False, seed=seed)
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        if staintype != "Mask":
+        if staintype != "Massk":
             labeled_ds = list_ds.map(parse_tiff, num_parallel_calls=AUTOTUNE)
         else:
             labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)

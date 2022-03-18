@@ -205,7 +205,7 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
             -1] = pseudo_dab
             res[i * net_sizein:(i + 1) * net_sizein,
             j * net_sizein:(j + 1) * net_sizein,
-            0] = hema_texture * 0.5
+            0] = hema_texture
 
             # res_set[i * net_sizein:(i + 1) * net_sizein,
             # j * net_sizein:(j + 1) * net_sizein] = nuclei_ * 2 + label_ * 4 + pred_ * 8 + tp_map * 16
@@ -242,3 +242,52 @@ def single_prediction(im_in, label, nuclei, net, li_mask=None, net_sizein=256):
     res = hecconv(res, H_ki67)
     res = np.clip(res, 0, 1)
     return (num_tp, num_tn, num_pred, num_npred, num_positive, num_negative, iou, res)
+
+def interactive_prediction(im_in, net, net_sizein=256):
+    W, H = im_in.shape[0], im_in.shape[1]
+    print("WH", W, H)
+    S = net_sizein
+    im_padded = np.ones((W+S*2, H+S*2, 3))
+    im_padded[S:S+W, S:S+H, :] = im_in
+    im_in = im_padded
+    res = zeros((W, H, 3))
+
+    W += 2*S
+    H += 2*S
+
+    mask = zeros((W, H))
+    maskop = zeros((W, H))
+
+    r = 8
+    pw, ph = S//r, S//r
+
+    w_num, h_num = (W -2*pw) // ((r-1)*pw), (H -2*ph) // ((r-1)*ph)
+    bchip =  np.zeros((w_num*h_num, S, S, 3))
+
+    # make batches for efficient GPU computation
+    for i in range(w_num):
+        for j in range(h_num):
+            bchip[i*h_num + j, :, :, :] = im_in[i * (r-1)*pw:(i) * (r-1)*pw + S,
+                   j * (r-1)*ph:(j)*(r-1)*ph + S,
+                   :].reshape(1, S, S, 3)
+
+    bmask = net.predict(bchip)
+    print(bmask.shape)
+    for i in range(w_num):
+        for j in range(h_num):
+            mask[i * (r-1)*pw:(i) * (r-1)*pw + S, j * (r-1)*ph:(j)*(r-1)*ph + S] += \
+                bmask[i*h_num + j, :, :, 0]
+            maskop[i * (r-1)*pw:(i) * (r-1)*pw + S, j * (r-1)*ph:(j)*(r-1)*ph + S] += np.ones_like(bmask[i*h_num + j, :, :, 0])     
+    mask = mask / maskop
+    mask[mask>0.5]=1
+    mask[mask<=0.5]=0
+    mask = mask[S:W-S, S:H-S]
+    hema_texture = rgbdeconv(im_in[S:W-S, S:H-S, :], H_Mou_inv, C=0)[:, :, 0]
+    print(hema_texture.shape, mask.shape, res.shape)
+    pseudo_dab = (hema_texture * mask)
+    res[:,:,-1] = pseudo_dab
+    res[:,:,0] = hema_texture
+    res = hecconv(res, H_ki67)
+    res = np.clip(res, 0, 1)
+    res = res # crop valid region
+    return res, hema_texture, mask

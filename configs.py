@@ -2,31 +2,37 @@
 from utils import *
 import tensorflow as tf
 from datetime import datetime
-
+import os
 HOME_PATH = "/raid/ji"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
-test_path = HOME_PATH + "/DATA/TILES_(2048, 2048)"
+test_path = HOME_PATH + "/DATA/KimuraLI"
 
-model_dir = HOME_PATH + "/models/"
+model_dir = HOME_PATH + "/models/tubame/"
 
 seed = 1
 
-lr = 1e-3
-lrstr = "{:.2e}".format(lr)
+
+
 edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
+devices = "0,1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = devices
 DEVICES=[
-    "gpu:0", 
-# "/gpu:1", 
-# "gpu:2",
-# "/gpu:3",
+"/gpu:%s"%id for id in devices[::2]
 ]
+
 num_gpus=len(DEVICES)
-bs = 64*num_gpus
-bs_v = 64*num_gpus
+
+lr = 3E-4
+lr = lr*num_gpus
+lrstr = "{:.2e}".format(lr)
+
+bs_single = 64
+bs = bs_single*num_gpus
+bs_v = bs_single*num_gpus
 verbose = 1
 
 checkpoint_period = 5
@@ -42,13 +48,17 @@ num_epoches = 100
 
 framework = "hvd-tfk"
 
-# model_name = "deeplabv3xcept"
-model_name = "dense121-unet"
+# model_name = "deeplabv3"
+# model_name = "dense121-unet"
+model_name = "unet-nopool" # unet256dab, unet256...
 
-loss_name = "l1"  # focalja, bce, bceja, ja, dice...
-
-# data_name = "kmr-intrainALLg0-xfold5n10-noaug"
-data_name = "kmr-G0t0iii-xfold5n10-noaug"
+loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
+data_name = "kmr-intra-is256-noaug"
+# data_name = "kmr-intrainALLg012-xfold5n10-noaug-nolireal"
+# data_name = "kmr-intrainALLg012-xfold5n10-noaug-nolireal"
+# data_name = "kmr-loocv8-noaug-nolireal"
+# data_name = "kmr-G2it2-xfold5n10-noaug"
+# kmr-G01-G2-xfold5n10-noaug_bceja_256_lr1.00e-03_ep00+50.h5
 
 configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     framework,
@@ -57,6 +67,7 @@ configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
     loss_name,
     edge_size,
     lrstr,
+    # bs
 )
 
 fold = folds(
