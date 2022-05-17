@@ -1,5 +1,6 @@
 from configs import *
 from utils import *
+
 # from kdeeplabv3.model import Deeplabv3
 import numpy as np
 import os
@@ -30,7 +31,8 @@ import segmentation_models as sm
 model_dict = {}
 loss_dict = {
     "bceja": sm.losses.bce_jaccard_loss,
-    "focal10ja": sm.losses.BinaryFocalLoss(alpha=0.02, gamma=100)+sm.losses.jaccard_loss,
+    "focal10ja": sm.losses.BinaryFocalLoss(alpha=0.02, gamma=100)
+    + sm.losses.jaccard_loss,
     "ja": sm.losses.jaccard_loss,
     "focal": sm.losses.BinaryFocalLoss(alpha=0.1, gamma=2),
     "bce": sm.losses.binary_crossentropy,
@@ -45,8 +47,7 @@ loss_dict = {
 #%%
 def smunet(loss="focal", pretrained_weights=None):
     gpu_strategy = tf.distribute.MirroredStrategy(
-        devices=DEVICES,
-        cross_device_ops=tf.distribute.NcclAllReduce()
+        devices=DEVICES, cross_device_ops=tf.distribute.NcclAllReduce()
     )
     with gpu_strategy.scope():
         model = sm.Unet(
@@ -67,9 +68,11 @@ def smunet(loss="focal", pretrained_weights=None):
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, 
-            CohenKappaImg(num_classes=2, sparse_labels=True),
-            "accuracy"],
+            metrics=[
+                sm.metrics.iou_score,
+                CohenKappaImg(num_classes=2, sparse_labels=True),
+                "accuracy",
+            ],
         )
     if pretrained_weights:
         model.load_weights(pretrained_weights)
@@ -78,73 +81,114 @@ def smunet(loss="focal", pretrained_weights=None):
 
 def kumatt(loss="focal", pretrained_weights=None):
     from keras_unet_collection import models as kum
+
     gpu_strategy = tf.distribute.MirroredStrategy(
-        devices=DEVICES,
-        cross_device_ops=tf.distribute.NcclAllReduce()
+        devices=DEVICES, cross_device_ops=tf.distribute.NcclAllReduce()
     )
     with gpu_strategy.scope():
-        model = kum.att_unet_2d(input_size=(256,256,3), filter_num=[16, 32, 64,128,256], n_labels=1, stack_num_down=2,             stack_num_up=2, activation='ReLU', 
-                        atten_activation='ReLU', attention='add', output_activation='Sigmoid', batch_norm=True, pool=False, unpool=True, 
-                        backbone="DenseNet121", weights="imagenet", freeze_backbone=False, freeze_batch_norm=False, name='attunet')
+        model = kum.att_unet_2d(
+            input_size=(256, 256, 3),
+            filter_num=[16, 32, 64, 128, 256],
+            n_labels=1,
+            stack_num_down=2,
+            stack_num_up=2,
+            activation="ReLU",
+            atten_activation="ReLU",
+            attention="add",
+            output_activation="Sigmoid",
+            batch_norm=True,
+            pool=False,
+            unpool=True,
+            backbone="DenseNet121",
+            weights="imagenet",
+            freeze_backbone=False,
+            freeze_batch_norm=False,
+            name="attunet",
+        )
 
-        model = kum.unet_2d(input_size=(256,256,3), filter_num=[16, 32, 64,128,256], n_labels=1, stack_num_down=2, stack_num_up=2,
-                            activation='ReLU', output_activation='Sigmoid', batch_norm=True, pool=False, unpool=True, 
-                            backbone="DenseNet121", weights="imagenet", freeze_backbone=False, freeze_batch_norm=False, name='unet')
+        model = kum.unet_2d(
+            input_size=(256, 256, 3),
+            filter_num=[16, 32, 64, 128, 256],
+            n_labels=1,
+            stack_num_down=2,
+            stack_num_up=2,
+            activation="ReLU",
+            output_activation="Sigmoid",
+            batch_norm=True,
+            pool=False,
+            unpool=True,
+            backbone="DenseNet121",
+            weights="imagenet",
+            freeze_backbone=False,
+            freeze_batch_norm=False,
+            name="unet",
+        )
         opt = tf.optimizers.Adam(lr)
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, 
-            # CohenKappaImg(num_classes=2, sparse_labels=True),
-            "accuracy"],
+            metrics=[
+                sm.metrics.iou_score,
+                # CohenKappaImg(num_classes=2, sparse_labels=True),
+                "accuracy",
+            ],
         )
         if pretrained_weights:
             model.load_weights(pretrained_weights)
     return model
 
-def deeplab(loss="focal",
+
+def deeplab(
+    loss="focal",
     input_size=(256, 256, 3),
     lr=1e-3,
-    classes = 1,
+    classes=1,
     os=8,
     pretrained_weights=None,
 ):
     gpu_strategy = tf.distribute.MirroredStrategy(
-            devices=DEVICES,
-            cross_device_ops=tf.distribute.NcclAllReduce()
-        )
+        devices=DEVICES, cross_device_ops=tf.distribute.NcclAllReduce()
+    )
     with gpu_strategy.scope():
-        model = Deeplabv3(input_shape=input_size, 
-        # backbone="xception",
-        activation="sigmoid",
-        OS=os,
-        classes=classes)
+        model = Deeplabv3(
+            input_shape=input_size,
+            # backbone="xception",
+            activation="sigmoid",
+            OS=os,
+            classes=classes,
+        )
         opt = tf.optimizers.Adam(lr)
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, 
-            CohenKappaImg(num_classes=2, sparse_labels=True),
-            "accuracy"],
+            metrics=[
+                sm.metrics.iou_score,
+                CohenKappaImg(num_classes=2, sparse_labels=True),
+                "accuracy",
+            ],
         )
     if pretrained_weights:
         model.load_weights(pretrained_weights)
     return model
+
+
 #%%
 def unet(
     loss="bceja",
     input_size=(256, 256, 3),
     lr=1e-3,
     pretrained_weights=None,
-    pl=[64,128,256,512,1024]
+    pl=[64, 128, 256, 512, 1024],
 ):
     gpu_strategy = tf.distribute.MirroredStrategy(
-        devices=DEVICES,
-        cross_device_ops=tf.distribute.NcclAllReduce()
+        devices=DEVICES, cross_device_ops=tf.distribute.NcclAllReduce()
     )
     with gpu_strategy.scope():
+
         def resblock(layer_input, filters, f_size=3):
-            r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(layer_input)
+            r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(
+                layer_input
+            )
             r = LeakyReLU(alpha=0.2)(r)
             r = BatchNormalization()(r)
             r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(r)
@@ -267,9 +311,11 @@ def unet(
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, 
-            CohenKappaImg(num_classes=2, sparse_labels=True),
-            "accuracy"],
+            metrics=[
+                sm.metrics.iou_score,
+                CohenKappaImg(num_classes=2, sparse_labels=True),
+                "accuracy",
+            ],
         )
 
     if pretrained_weights:
@@ -284,15 +330,17 @@ def unethd(
     input_size=(256, 256, 3),
     lr=1e-3,
     pretrained_weights=None,
-    pl=[64,128,256,512,1024]
+    pl=[64, 128, 256, 512, 1024],
 ):
     gpu_strategy = tf.distribute.MirroredStrategy(
-        devices=DEVICES,
-        cross_device_ops=tf.distribute.NcclAllReduce()
+        devices=DEVICES, cross_device_ops=tf.distribute.NcclAllReduce()
     )
     with gpu_strategy.scope():
+
         def resblock(layer_input, filters, f_size=3):
-            r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(layer_input)
+            r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(
+                layer_input
+            )
             r = LeakyReLU(alpha=0.2)(r)
             r = BatchNormalization()(r)
             r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(r)
@@ -415,9 +463,11 @@ def unethd(
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
-            metrics=[sm.metrics.iou_score, 
-            CohenKappaImg(num_classes=2, sparse_labels=True),
-            "accuracy"],
+            metrics=[
+                sm.metrics.iou_score,
+                CohenKappaImg(num_classes=2, sparse_labels=True),
+                "accuracy",
+            ],
         )
 
     if pretrained_weights:
@@ -425,3 +475,154 @@ def unethd(
 
     return model
 
+
+from classification_models.tfkeras import Classifiers
+
+n_classes = 2
+# build model
+from tensorflow.keras.applications.resnet50 import ResNet50
+
+
+def u_res50enc(
+    backbone=None,
+    pretrained_weights=None,
+    input_size=(256, 256, 3),
+    lr=1e-3,
+    multi_gpu=False,
+    loss="l1",
+):
+
+    strategy = tf.distribute.MirroredStrategy(
+        devices=DEVICES, cross_device_ops=tf.distribute.NcclAllReduce()
+    )
+    with strategy.scope():
+        #         inputs = Input(input_size)
+        Net, preprocess_input = Classifiers.get("resnet50")
+        base_model = Net(input_shape=(256, 256, 3), weights=None, include_top=False)
+
+        x = keras.layers.GlobalAveragePooling2D()(base_model.output)
+        beforeGAP = keras.layers.Flatten()(base_model.output)
+
+        output = keras.layers.Dense(n_classes, activation="sigmoid")(x)
+        backbone = keras.models.Model(
+            inputs=[base_model.input], outputs=[output, x, beforeGAP]
+        )
+
+        # backbone.load_weights("/home/cunyuan/code/nuc64cls/modelol50.h5")
+        backbone = backbone
+
+        def resblock(layer_input, filters, f_size=3):
+            r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(
+                layer_input
+            )
+            r = LeakyReLU(alpha=0.2)(r)
+            r = BatchNormalization()(r)
+            r = Conv2D(filters, kernel_size=f_size, strides=1, padding="same")(r)
+            r = LeakyReLU(alpha=0.2)(r)
+            r = Add()([r, layer_input])
+            return BatchNormalization()(r)
+
+        def resblockn(n, layer_input, filters, f_size=3):
+            x = layer_input
+            for k in range(n):
+                x = resblock(x, filters, f_size)
+            return x
+
+        #         inputs = Input(input_size)
+        #         inputl = backbone.get_layer("data")
+        skip0 = backbone.get_layer("bn_data").output
+        skip1 = backbone.get_layer("relu0").output
+        skip2 = backbone.get_layer("add_1").output
+
+        skip3 = backbone.get_layer("add_6").output
+        skip4 = backbone.get_layer("add_11").output
+
+        #         res5 = resblockn(9, skip4, 2048)
+        res5 = backbone.get_layer("add_15").output
+        #         res5 = MaxPool2D()(res5)
+
+        up6 = Conv2D(
+            512, 2, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(UpSampling2D(size=(2, 2))(res5))
+        merge6 = concatenate([skip4, up6], axis=3)
+
+        conv6 = Conv2D(
+            512, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(merge6)
+        conv6 = Conv2D(
+            512, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv6)
+        conv6 = BatchNormalization()(conv6)
+
+        up7 = Conv2D(
+            256, 2, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(UpSampling2D(size=(2, 2))(conv6))
+        merge7 = concatenate([skip3, up7], axis=3)
+
+        conv7 = Conv2D(
+            256, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(merge7)
+        conv7 = Conv2D(
+            256, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv7)
+        conv7 = BatchNormalization()(conv7)
+
+        up8 = Conv2D(
+            128, 2, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(UpSampling2D(size=(2, 2))(conv7))
+        merge8 = concatenate([skip2, up8], axis=3)
+        conv8 = Conv2D(
+            128, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(merge8)
+        conv8 = Conv2D(
+            128, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv8)
+        conv8 = BatchNormalization()(conv8)
+        up9 = Conv2D(
+            64, 2, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(UpSampling2D(size=(2, 2))(conv8))
+        merge9 = concatenate([skip1, up9], axis=3)
+        conv9 = Conv2D(
+            64, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(merge9)
+        conv9 = Conv2D(
+            64, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv9)
+        conv9 = Conv2D(
+            2, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv9)
+        conv9 = BatchNormalization()(conv9)
+
+        up91 = Conv2D(
+            64, 2, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(UpSampling2D(size=(2, 2))(conv9))
+        merge91 = concatenate([skip0, up91], axis=3)
+        conv91 = Conv2D(
+            64, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(merge91)
+        conv91 = Conv2D(
+            64, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv91)
+        conv91 = Conv2D(
+            2, 3, activation="relu", padding="same", kernel_initializer="he_normal"
+        )(conv91)
+        conv91 = BatchNormalization()(conv91)
+
+        conv10 = Conv2D(1, 1, activation="sigmoid")(conv91)
+        model = Model(inputs=backbone.input, outputs=conv10)
+        # model = multi_gpu_model(model, gpus=2)
+    model.compile(
+        keras.optimizers.Adam(1e-3, 0.9),
+        loss=loss_dict[loss],
+        metrics=[
+            sm.metrics.iou_score,
+            # CohenKappaImg(num_classes=2, sparse_labels=True),
+            "accuracy",
+        ],
+    )
+
+    # model.summary()
+    if pretrained_weights:
+        model.load_weights(pretrained_weights)
+
+    return model

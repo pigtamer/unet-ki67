@@ -190,7 +190,8 @@ def load_kmr_tfdata(
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         # -------------- <<
 
-        list_ds = list_ds.shard(num_shards=num_shards, index=0)
+        # list_ds = list_ds.shard(num_shards=num_shards, index=0)
+        print(list_ds)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         if staintype != "DAB" and staintype != "Mask":
             labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)

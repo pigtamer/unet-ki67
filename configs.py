@@ -4,8 +4,10 @@ import tensorflow as tf
 from datetime import datetime
 import os
 HOME_PATH = "/raid/ji"
+# train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
+# val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 test_path = HOME_PATH + "/DATA/KimuraLI"
 
 model_dir = HOME_PATH + "/models/tubame/"
@@ -14,26 +16,32 @@ seed = 1
 
 
 
+# ------------------ 指定训练·测试图像尺寸 ---------------------
 edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
-devices = "0,1,2"
+# ------------------ 指定GPU资源 ---------------------
+devices = "2,3"
 os.environ["CUDA_VISIBLE_DEVICES"] = devices
 DEVICES=[
-"/gpu:%s"%id for id in devices[::2]
+"/gpu:%s"%id for id in devices[::2]# ::2 skips puncs in device string
 ]
 
 num_gpus=len(DEVICES)
 
-lr = 3E-4
-lr = lr*num_gpus
+lr = 2.5E-4
+lr = lr*num_gpus # 线性scale学习率
+
+# ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
+lr = 1E-3
+
 lrstr = "{:.2e}".format(lr)
 
 bs_single = 64
 bs = bs_single*num_gpus
 bs_v = bs_single*num_gpus
-verbose = 1
+verbose = 2
 
 checkpoint_period = 5
 
@@ -44,32 +52,29 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 100
+num_epoches = 55
 
 framework = "hvd-tfk"
 
 # model_name = "deeplabv3"
-# model_name = "dense121-unet"
-model_name = "unet-nopool" # unet256dab, unet256...
+model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
-data_name = "kmr-intra-is256-noaug"
-# data_name = "kmr-intrainALLg012-xfold5n10-noaug-nolireal"
-# data_name = "kmr-intrainALLg012-xfold5n10-noaug-nolireal"
-# data_name = "kmr-loocv8-noaug-nolireal"
-# data_name = "kmr-G2it2-xfold5n10-noaug"
-# kmr-G01-G2-xfold5n10-noaug_bceja_256_lr1.00e-03_ep00+50.h5
 
-configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
+id_loocv = 3
+data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
+oversampling = 1
+
+configstring = "%s_%s_%s_%s_%d_lr%s_bs%s" % (
     framework,
     model_name,
     data_name,
     loss_name,
     edge_size,
     lrstr,
-    # bs
+    bs
 )
-
+print(configstring)
 fold = folds(
     l_wsis=[
         k + ""
@@ -96,23 +101,25 @@ fold = {
 }
 foldmat = np.vstack([fold[key] for key in fold.keys()])
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+{epoch:02d}" % (
     framework,
     model_name,
     data_name,
     loss_name,
     edge_size,
     lrstr,
+    bs,
     continue_step[1] + continue_step[0],
 )
 
-continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+%02d.h5" % (
     framework,
     model_name,
     data_name,
     loss_name,
     edge_size,
     lrstr,
+    bs,
     continue_step[0],
     continue_step[1],
 )

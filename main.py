@@ -15,35 +15,42 @@ from sklearn.metrics import (
     jaccard_score,
 )
 
+
+tr_ids = np.hstack([foldmat.ravel()[:id_loocv],foldmat.ravel()[id_loocv+1:]])
+val_ids = [foldmat.ravel()[id_loocv]]
+print(tr_ids)
+print(val_ids)
 trainGene, n_train = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
     cross_fold=cross_fold[0],
     # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
+    wsi_ids=tr_ids,
     # wsi_ids=[foldmat[1, 0],],
-    wsi_ids=foldmat.ravel(),
+    # wsi_ids=foldmat.ravel(),
     stains=["HE", "Mask"], #DAB, Mask, HE< IHC
     aug=False,
     target_size=target_size,
     cache=False,
     shuffle_buffer_size=22800,
     seed=seed,
-    num_shards=10
+    num_shards=1
 )
 valGene, n_val = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
-    # cross_fold=cross_fold[1],
-    cross_fold=["005", "010"],
-    wsi_ids=foldmat.ravel(),
+    cross_fold=cross_fold[1],
+    # cross_fold=["003"],
+    # wsi_ids=foldmat.ravel(),
     # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
+    wsi_ids=val_ids,
     # wsi_ids=[foldmat[1, 0],],
     stains=["HE", "Mask"],
     aug=False,
     cache=False,
     shuffle_buffer_size=1000,
     seed=seed,
-    num_shards=10
+    num_shards=1
 )
 testGene, n_test = load_kmr_test(
     dataset_path=test_path,
@@ -79,21 +86,23 @@ tensorboard_callback = TensorBoard(log_dir=logdir)
 callbacks = [model_checkpoint,tensorboard_callback]
 
 # model = deeplab(loss=loss_name, lr = lr, classes=3)
-# model = smunet(loss=loss_name)
+model = smunet(loss=loss_name)
+# model = u_res50enc(loss=loss_name)
 # model = unet(loss=loss_name, 
 #  	pl=[16,32,64,128,256],
 #  	# pl=[256,128,64,32,16], # reverted
 #  	)
-model = kumatt(loss=loss_name)
+# model = kumatt(loss=loss_name)
 
 if flag_continue:
-    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+%02d" % (
         framework,
         model_name,
         data_name,
         loss_name,
         edge_size,
         lrstr,
+        bs,
         continue_step[0],
         continue_step[1]
     )
@@ -115,53 +124,58 @@ if not flag_test:
         validation_data=valGene,
         validation_freq=5,
         validation_steps=n_val//bs_v,
-        steps_per_epoch=step_num,
+        steps_per_epoch=step_num*oversampling,
         epochs=num_epoches,
         initial_epoch=initial_epoch,
         callbacks=callbacks,
     )
 else:
-    for k in range(10, 11):
-        start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
-            framework,
-            model_name,
-            data_name,
-            loss_name,
-            edge_size,
-            lrstr,
-            continue_step[0] + continue_step[1],
-            k * checkpoint_period,
-        )
-        print(start_path)
-        model.load_weights(start_path)
-        model.save(model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d"% (
-            framework,
-            model_name,
-            data_name,
-            loss_name,
-            edge_size,
-            lrstr,
-            continue_step[0] + continue_step[1],
-            k * checkpoint_period,
-        ))
+    # ----------------------------------------------------------------------
+    # 转换tfpb模型为h5
+    # ----------------------------------------------------------------------
+
+    # for k in range(10, 11):
+    #     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+    #         framework,
+    #         model_name,
+    #         data_name,
+    #         loss_name,
+    #         edge_size,
+    #         lrstr,
+    #         continue_step[0] + continue_step[1],
+    #         k * checkpoint_period,
+    #     )
+    #     print(start_path)
+    #     model = tf.keras.models.load_model(start_path)
+    #     model.save(model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5"% (
+    #         framework,
+    #         model_name,
+    #         data_name,
+    #         loss_name,
+    #         edge_size,
+    #         lrstr,
+    #         continue_step[0] + continue_step[1],
+    #         k * checkpoint_period,
+    #     ))
         #model.evaluate(valGene, steps=n_val//bs_v)
         # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
         # kappa.update_state(y_true , y_pred)
     for k in range(10, 11):
         # continue each model checkpoint
-        start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+        start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+%02d.h5" % (
             framework,
             model_name,
             data_name,
             loss_name,
             edge_size,
             lrstr,
+            bs,
             continue_step[0] + continue_step[1],
             k * checkpoint_period,
         )
         # sm.set_framework('tf.keras')
         model.load_weights(start_path)
-        """
+
         # print(n_val//bs_v)
         from sklearn.metrics import roc_curve, auc
 
@@ -169,44 +183,44 @@ else:
         plt.plot([0, 1], [0, 1], "k--")
         auclist = []
         for cases in ["All cases"]:
-        # for cases in foldmat.ravel():
-            valGene, n_val = load_kmr_tfdata(
-                            dataset_path=val_path,
-                            batch_size=bs_v,
-                            cross_fold=cross_fold[1],
-                            wsi_ids=foldmat.ravel(),
-                            # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
-                            # wsi_ids=[cases],
-                            stains=["HE", "Mask"],
-                            aug=False,
-                            cache=False,
-                            shuffle_buffer_size=128,
-                            seed=seed,
-                        )
-            for k_val, (x, y) in zip( tqdm(range(n_val//bs_v)), valGene):
-            # for k_val, (x, y) in zip( tqdm(range(1)), valGene):
-                f = model.predict(x, batch_size=bs_v)
-                # plt.show()
-                # print(k_val)
-                y = y.numpy().reshape(-1,)[::100]
-                f = f.reshape(-1,)[::100]
-                # print(classification_report(y > 0, f>0.5))
-                if k_val == 0:
-                    Y, F = y, f
-                    # thresh_argmax_f1 = 0
-                    # print(start_path)
-                    # print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
-                else:
-                    Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
-            print(classification_report(Y > 0, F>0.5))
-            np.savetxt("%s.csv"%cases, [Y, F], delimiter=",")
-            fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-            area_under_curve = auc(fpr, tpr)
-            auclist.append(area_under_curve)
-            plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
-            plt.xlabel("False positive rate")
-            plt.ylabel("True positive rate")
-            plt.title("ROC curve")
+            for cases in [foldmat[2, 2],]:
+                valGene, n_val = load_kmr_tfdata(
+                                dataset_path=val_path,
+                                batch_size=bs_v,
+                                cross_fold=cross_fold[1],
+                                # wsi_ids=foldmat.ravel(),
+                                # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
+                                wsi_ids=[cases],
+                                stains=["HE", "Mask"],
+                                aug=False,
+                                cache=False,
+                                shuffle_buffer_size=128,
+                                seed=seed,
+                            )
+                for k_val, (x, y) in zip( tqdm(range(n_val//bs_v)), valGene):
+                # for k_val, (x, y) in zip( tqdm(range(1)), valGene):
+                    f = model.predict(x, batch_size=bs_v)
+                    # plt.show()
+                    # print(k_val)
+                    y = y.numpy().reshape(-1,)[::100]
+                    f = f.reshape(-1,)[::100]
+                    # print(classification_report(y > 0, f>0.5))
+                    if k_val == 0:
+                        Y, F = y, f
+                        # thresh_argmax_f1 = 0
+                        # print(start_path)
+                        # print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
+                    else:
+                        Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
+                print(classification_report(Y > 0, F>0.5))
+                np.savetxt("%s.csv"%cases, [Y, F], delimiter=",")
+                fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
+                area_under_curve = auc(fpr, tpr)
+                auclist.append(area_under_curve)
+                plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
+                plt.xlabel("False positive rate")
+                plt.ylabel("True positive rate")
+                plt.title("ROC curve")
         legs = ['Luck']+['All cases']
         # legs = ['Luck']+[x[6:10] for x in foldmat.ravel()]
         for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
@@ -217,8 +231,11 @@ else:
         plt.savefig("/home/cunyuan/roc.png")
         exit(0)
 
-        """
+        
 
+        # ----------------------------------------------------------------------
+        # 残留代码，决定最佳阈值
+        # ----------------------------------------------------------------------
         """
             # print(k_val)
         # f1_max = 0
