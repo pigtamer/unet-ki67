@@ -15,26 +15,45 @@ from sklearn.metrics import (
     jaccard_score,
 )
 
+os.environ['TF_CUDNN_DETERMINISTIC']='1'
+#print(hvd.rank(), ":", foldmat.ravel()[:-1])
+#print(foldmat.ravel())
+
+tr_ids = np.hstack([foldmat.ravel()[:id_loocv],foldmat.ravel()[id_loocv+1:]])
+val_ids = [foldmat.ravel()[id_loocv]]
+print(tr_ids)
+print(val_ids)
 trainGene, n_train = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
     cross_fold=cross_fold[0],
-    wsi_ids=np.hstack([foldmat[0, 1], foldmat[0, 2]]).ravel(),
+    # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
+    wsi_ids=tr_ids,
+    # wsi_ids=[foldmat[1, 0],],
+    # wsi_ids=foldmat.ravel(),
+    stains=["HE", "Mask"], #DAB, Mask, HE< IHC
     aug=False,
     target_size=target_size,
     cache=False,
-    shuffle_buffer_size=128,
+    shuffle_buffer_size=6000,
     seed=seed,
+    # num_shards=1
 )
 valGene, n_val = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
     cross_fold=cross_fold[1],
-    wsi_ids=foldmat[0, 0].ravel(),
+    # cross_fold=["003"],
+    # wsi_ids=foldmat.ravel(),
+    # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
+    wsi_ids=val_ids,
+    # wsi_ids=[foldmat[1, 0],],
+    stains=["HE", "Mask"],
     aug=False,
     cache=False,
-    shuffle_buffer_size=128,
+    shuffle_buffer_size=1000,
     seed=seed,
+    # num_shards=1
 )
 
 testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
@@ -73,7 +92,7 @@ if hvd.rank() == 0:
 training_history = model.fit(
     trainGene,
     validation_data=valGene,
-    validation_freq=5,
+    validation_freq=1,
     validation_steps=n_val//bs_v,
     steps_per_epoch=step_num,
     epochs=num_epoches,

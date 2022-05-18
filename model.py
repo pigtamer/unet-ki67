@@ -11,8 +11,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-import horovod.tensorflow.keras as hvd
-
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras import losses, callbacks
 import tensorflow_io as tfio
@@ -30,7 +28,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 import segmentation_models as sm
 
-hvd.init()
 
 # Pin GPU to be used to process local rank (one GPU per process)
 gpus = tf.config.experimental.list_physical_devices("GPU")

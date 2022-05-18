@@ -28,6 +28,7 @@ import skimage.io as io
 import skimage.transform as trans
 
 from data import adjustData
+from configs import *
 from model import *
 from utils import *
 
@@ -153,7 +154,7 @@ def load_kmr_tfdata(
 
                 image = tf.image.random_flip_left_right(image, seed=seed)
                 image = tf.image.random_flip_up_down(image, seed=seed)
-                return image
+                return imagex
 
         dir_pattern = [
             dataset_path

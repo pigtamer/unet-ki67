@@ -1,4 +1,6 @@
 #%%
+import horovod.tensorflow.keras as hvd
+hvd.init()
 from utils import *
 import tensorflow as tf
 from datetime import datetime
@@ -12,15 +14,17 @@ model_dir = HOME_PATH + "/models/"
 
 seed = 1
 
-lr = 1e-3
-lrstr = "{:.2e}".format(lr)
 edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
-num_gpus=1
-bs = 32*num_gpus
-bs_v = 32*num_gpus
+# ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
+lr = 1E-3 / hvd.size()
+
+lrstr = "{:.2e}".format(lr)
+
+bs = 16
+bs_v = 16
 verbose = 1
 
 checkpoint_period = 5
@@ -36,21 +40,26 @@ num_epoches = 55
 
 framework = "hvd-tfk"
 
+# model_name = "deeplabv3"
 model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-# data_name = "kmr-intrainALLg2-xfold5n10-noaug"
-data_name = "kmr-G0i0t-xfold5n10-noaug"
+id_loocv = 3
+data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
+oversampling = 1
 
-configstring = "%s_%s_%s_%s_%d_lr%s.h5" % (
+configstring = "%s_%s_%s_%s_%d_lr%s_bs%sxn%s" % (
     framework,
     model_name,
     data_name,
     loss_name,
     edge_size,
     lrstr,
+    bs,
+    hvd.size()
 )
+print(configstring)
 
 fold = folds(
     l_wsis=[
