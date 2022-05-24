@@ -1,9 +1,18 @@
 #%%
 import horovod.tensorflow.keras as hvd
+
 hvd.init()
 from utils import *
 import tensorflow as tf
 from datetime import datetime
+import random
+
+seed = 1
+# tf.keras.utils.set_random_seed(seed)
+random.seed(seed)
+np.random.seed(seed)
+tf.random.set_seed(seed)
+# tf.config.experimental.enable_op_determinism()
 
 HOME_PATH = "/gs/hs0/tga-yamaguchi.m/ji"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
@@ -12,18 +21,17 @@ test_path = HOME_PATH + "/DATA/test_1024/k"
 
 model_dir = HOME_PATH + "/models/"
 
-seed = 1
 
 edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
 # ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
-lr = 1E-3 / hvd.size()
+lr = 1e-3 / hvd.size()
 
 lrstr = "{:.2e}".format(lr)
 
-bs = 16
+bs = 8
 bs_v = 16
 verbose = 1
 
@@ -36,7 +44,7 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 55
+num_epoches = 51
 
 framework = "hvd-tfk"
 
@@ -46,8 +54,42 @@ model_name = "dense121-unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
 id_loocv = 3
-data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-oversampling = 1
+# data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
+data_name = "kmr-imgnet-sing%s"%id_loocv
+oversampling = 4
+FIXED_STEPS = 1600
+
+cross_fold = [["001", "002", "003", "004", "006", "007", "008", "009"], ["005", "010"]]
+
+fold = {
+    "G1": ["01_14-7015_Ki67", "01_15-1052_Ki67", "01_14-3768_Ki67"],
+    "G2": ["01_17-5256_Ki67", "01_17-6747_Ki67", "01_17-8107_Ki67"],
+    "G3": ["01_17-7885_Ki67", "01_15-2502_Ki67", "01_17-7930_Ki67"],
+}
+foldmat = np.vstack([fold[key] for key in fold.keys()])
+
+sing_group = [
+    [0, 1, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [3, 4, 5],
+    [4, 5, 3],
+    [5, 3, 4],
+    [6, 7, 8],
+    [7, 8, 6],
+    [8, 6, 7],
+]
+
+sing = sing_group[id_loocv]
+# tr_ids = np.hstack([foldmat.ravel()[:id_loocv], foldmat.ravel()[id_loocv + 1 :]])
+tr_ids = [foldmat.ravel()[sing[1]], foldmat.ravel()[sing[2]]]
+# tr_ids=foldmat.ravel(), # Mixed
+
+# val_ids = [foldmat.ravel()[id_loocv]]
+val_ids = [foldmat.ravel()[sing[0]]]
+
+print(tr_ids)
+print(val_ids)
 
 configstring = "%s_%s_%s_%s_%d_lr%s_bs%sxn%s" % (
     framework,
@@ -57,35 +99,10 @@ configstring = "%s_%s_%s_%s_%d_lr%s_bs%sxn%s" % (
     edge_size,
     lrstr,
     bs,
-    hvd.size()
+    hvd.size(),
 )
 print(configstring)
 
-fold = folds(
-    l_wsis=[
-        k + ""
-        for k in [
-            "01_14-7015_Ki67",  # 1 22091
-            "01_17-5256_Ki67",  # 2 54923
-            "01_17-7885_Ki67",  # 3 42635 --> 466272
-            "01_15-1052_Ki67",  # 1 34251
-            "01_17-6747_Ki67",  # 2 66635
-            "01_15-2502_Ki67",  # 3 136715
-            "01_14-3768_Ki67",  # 1 106379
-            "01_17-8107_Ki67",  # 2 69097
-            "01_17-7930_Ki67",  # 3 53195
-        ]
-    ],
-    k=3,
-)
-cross_fold = [["001", "002", "003", "004",  "006", "007", "008", "009"], ["005", "010"]]
-
-fold = {
-    "G1": ["01_14-7015_Ki67", "01_15-1052_Ki67", "01_14-3768_Ki67"],
-    "G2": ["01_17-5256_Ki67", "01_17-6747_Ki67", "01_17-8107_Ki67"],
-    "G3": ["01_17-7885_Ki67", "01_15-2502_Ki67", "01_17-7930_Ki67"],
-}
-foldmat = np.vstack([fold[key] for key in fold.keys()])
 
 model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
     framework,
@@ -109,7 +126,8 @@ continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
 )
 
 logdir = (
-    HOME_PATH+ "/logs/scalars/"
+    HOME_PATH
+    + "/logs/scalars/"
     + datetime.now().strftime("%Y%m%d-%H%M%S")
     + configstring
 )

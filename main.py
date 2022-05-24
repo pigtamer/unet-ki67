@@ -5,7 +5,9 @@ from data_kmr import *
 from utils import *
 from color_proc import *
 
-import segmentation_models as sm; sm.set_framework("tf.keras")
+import segmentation_models as sm
+
+sm.set_framework("tf.keras")
 
 
 from sklearn.metrics import (
@@ -15,23 +17,16 @@ from sklearn.metrics import (
     jaccard_score,
 )
 
-os.environ['TF_CUDNN_DETERMINISTIC']='1'
-#print(hvd.rank(), ":", foldmat.ravel()[:-1])
-#print(foldmat.ravel())
+os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
+# print(hvd.rank(), ":", foldmat.ravel()[:-1])
+# print(foldmat.ravel())
 
-tr_ids = np.hstack([foldmat.ravel()[:id_loocv],foldmat.ravel()[id_loocv+1:]])
-val_ids = [foldmat.ravel()[id_loocv]]
-print(tr_ids)
-print(val_ids)
 trainGene, n_train = load_kmr_tfdata(
     dataset_path=train_path,
     batch_size=bs,
     cross_fold=cross_fold[0],
-    # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
     wsi_ids=tr_ids,
-    # wsi_ids=[foldmat[1, 0],],
-    # wsi_ids=foldmat.ravel(),
-    stains=["HE", "Mask"], #DAB, Mask, HE< IHC
+    stains=["HE", "Mask"],  # DAB, Mask, HE< IHC
     aug=False,
     target_size=target_size,
     cache=False,
@@ -43,11 +38,7 @@ valGene, n_val = load_kmr_tfdata(
     dataset_path=val_path,
     batch_size=bs_v,
     cross_fold=cross_fold[1],
-    # cross_fold=["003"],
-    # wsi_ids=foldmat.ravel(),
-    # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
     wsi_ids=val_ids,
-    # wsi_ids=[foldmat[1, 0],],
     stains=["HE", "Mask"],
     aug=False,
     cache=False,
@@ -64,26 +55,25 @@ step_num = n_train // bs
 # step_num=10 # for test
 
 model_checkpoint = ModelCheckpoint(
-        model_path,
-        monitor="loss",
-        verbose=verbose,
-        save_best_only=False,
-        save_weights_only=False,
-        mode="auto",
-        save_freq=checkpoint_period * step_num,
-    )
+    model_path,
+    monitor="loss",
+    verbose=verbose,
+    save_best_only=False,
+    save_weights_only=False,
+    mode="auto",
+    save_freq=checkpoint_period * step_num,
+)
 
 file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
 tensorboard_callback = TensorBoard(log_dir=logdir)
-callbacks = [hvd.callbacks.BroadcastGlobalVariablesCallback(0),
-
-        hvd.callbacks.MetricAverageCallback(),
-
-        hvd.callbacks.LearningRateWarmupCallback(
-            warmup_epochs=5, initial_lr=lr, verbose=verbose
-        )
-        ]
+callbacks = [
+    hvd.callbacks.BroadcastGlobalVariablesCallback(0),
+    hvd.callbacks.MetricAverageCallback(),
+    hvd.callbacks.LearningRateWarmupCallback(
+        warmup_epochs=5, initial_lr=lr, verbose=verbose
+    ),
+]
 
 if hvd.rank() == 0:
     callbacks.append(model_checkpoint)
@@ -93,8 +83,9 @@ training_history = model.fit(
     trainGene,
     validation_data=valGene,
     validation_freq=1,
-    validation_steps=n_val//bs_v,
-    steps_per_epoch=step_num,
+    validation_steps=n_val // bs_v,
+    # steps_per_epoch=step_num*oversampling,
+    steps_per_epoch=FIXED_STEPS,
     epochs=num_epoches,
     initial_epoch=initial_epoch,
     callbacks=callbacks,
