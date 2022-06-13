@@ -217,7 +217,7 @@ def load_kmr_test(
     batch_size=1,
     wsi_ids=None,
     cross_fold=None,
-    stains=["HE", "Mask", "IHC"],
+    stains=["HE", "IHC"],
     aug=False,
     target_size=(2048, 2048),
     seed=1,
@@ -236,16 +236,16 @@ def load_kmr_test(
         # resize the image to the desired size.
         return img
 
-    def parse_tiff(file_path):
-        img = tf.io.read_file(file_path)
-        # convert the compressed string to a 3D uint8 tensor
-        img = tfio.experimental.image.decode_tiff(img)
+    # def parse_tiff(file_path):
+    #     img = tf.io.read_file(file_path)
+    #     # convert the compressed string to a 3D uint8 tensor
+    #     img = tfio.experimental.image.decode_tiff(img)
 
-        img = tf.image.convert_image_dtype(img, tf.float32)
+    #     img = tf.image.convert_image_dtype(img, tf.float32)
 
-        img = tf.image.resize(img, [target_size[0], target_size[1]])
-        # resize the image to the desired size.
-        return img
+    #     img = tf.image.resize(img, [target_size[0], target_size[1]])
+    #     # resize the image to the desired size.
+    #     return img
 
     def prepare_for_training(
         ds, cache=cache, shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size
@@ -280,10 +280,8 @@ def load_kmr_test(
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=False, seed=seed)
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         AUTOTUNE = tf.data.experimental.AUTOTUNE
-        if staintype != "Massk":
-            labeled_ds = list_ds.map(parse_tiff, num_parallel_calls=AUTOTUNE)
-        else:
-            labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
+
+        labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)
 
         data_generator[staintype] = prepare_for_training(
             labeled_ds,
@@ -293,7 +291,6 @@ def load_kmr_test(
         )
     train_generator = zip(
         data_generator["HE"],
-        data_generator["Mask"],
         data_generator["IHC"],
     )
     n = len(list_ds)

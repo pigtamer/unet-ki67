@@ -8,13 +8,11 @@ HOME_PATH = "/raid/ji"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 # val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
-test_path = HOME_PATH + "/DATA/KimuraLI"
+test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 
-model_dir = HOME_PATH + "/models/tubame/"
+model_dir = HOME_PATH + "/2205ep50/ALL/ep50/"
 
 seed = 1
-
-
 
 # ------------------ 指定训练·测试图像尺寸 ---------------------
 edge_size = 256
@@ -22,7 +20,7 @@ target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
 # ------------------ 指定GPU资源 ---------------------
-devices = "2,3"
+devices = "0,1,2,3"
 os.environ["CUDA_VISIBLE_DEVICES"] = devices
 DEVICES=[
 "/gpu:%s"%id for id in devices[::2]# ::2 skips puncs in device string
@@ -34,14 +32,13 @@ lr = 2.5E-4
 lr = lr*num_gpus # 线性scale学习率
 
 # ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
-lr = 1E-3
+# lr = 1e-3/8
 
 lrstr = "{:.2e}".format(lr)
 
-bs_single = 64
-bs = bs_single*num_gpus
-bs_v = bs_single*num_gpus
-verbose = 2
+bs = 32
+bs_v = 16
+verbose = 1
 
 checkpoint_period = 5
 
@@ -52,7 +49,7 @@ flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 55
+num_epoches = 51
 
 framework = "hvd-tfk"
 
@@ -61,38 +58,14 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-id_loocv = 3
-data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
+id_loocv = 8
+#data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
+data_name = "ALL_imgnet_rand"
+# data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
 oversampling = 1
+# FIXED_STEPS = 1600
 
-configstring = "%s_%s_%s_%s_%d_lr%s_bs%s" % (
-    framework,
-    model_name,
-    data_name,
-    loss_name,
-    edge_size,
-    lrstr,
-    bs
-)
-print(configstring)
-fold = folds(
-    l_wsis=[
-        k + ""
-        for k in [
-            "01_14-7015_Ki67",  # 1 22091
-            "01_17-5256_Ki67",  # 2 54923
-            "01_17-7885_Ki67",  # 3 42635 --> 466272
-            "01_15-1052_Ki67",  # 1 34251
-            "01_17-6747_Ki67",  # 2 66635
-            "01_15-2502_Ki67",  # 3 136715
-            "01_14-3768_Ki67",  # 1 106379
-            "01_17-8107_Ki67",  # 2 69097
-            "01_17-7930_Ki67",  # 3 53195
-        ]
-    ],
-    k=3,
-)
-cross_fold = [["001", "002", "003", "004",  "006", "007", "008", "009"], ["005", "010"]]
+cross_fold = [["001", "002", "003", "004", "006", "007", "008", "009"], ["005", "010"]]
 
 fold = {
     "G1": ["01_14-7015_Ki67", "01_15-1052_Ki67", "01_14-3768_Ki67"],
@@ -101,7 +74,30 @@ fold = {
 }
 foldmat = np.vstack([fold[key] for key in fold.keys()])
 
-model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+{epoch:02d}" % (
+sing_group = [
+    [0, 1, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [3, 4, 5],
+    [4, 5, 3],
+    [5, 3, 4],
+    [6, 7, 8],
+    [7, 8, 6],
+    [8, 6, 7],
+]
+
+# sing = sing_group[id_loocv]
+#tr_ids = np.hstack([foldmat.ravel()[:id_loocv], foldmat.ravel()[id_loocv + 1 :]])
+# tr_ids = [foldmat.ravel()[sing[1]], foldmat.ravel()[sing[2]]]
+tr_ids=foldmat.ravel() # Mixed
+
+#val_ids = [foldmat.ravel()[id_loocv]]
+# val_ids = [foldmat.ravel()[sing[0]]]
+val_ids = foldmat.ravel()
+print(tr_ids)
+print(val_ids)
+
+configstring = "%s_%s_%s_%s_%d_lr%s_bs%sxn%s" % (
     framework,
     model_name,
     data_name,
@@ -109,23 +105,35 @@ model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+{epoch:02d}" % (
     edge_size,
     lrstr,
     bs,
+    hvd.size(),
+)
+print(configstring)
+
+
+model_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+{epoch:02d}.h5" % (
+    framework,
+    model_name,
+    data_name,
+    loss_name,
+    edge_size,
+    lrstr,
     continue_step[1] + continue_step[0],
 )
 
-continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+%02d.h5" % (
+continue_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
     framework,
     model_name,
     data_name,
     loss_name,
     edge_size,
     lrstr,
-    bs,
     continue_step[0],
     continue_step[1],
 )
 
 logdir = (
-    HOME_PATH+ "/logs/scalars/"
+    HOME_PATH
+    + "/logs/scalars/"
     + datetime.now().strftime("%Y%m%d-%H%M%S")
     + configstring
 )

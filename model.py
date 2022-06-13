@@ -13,7 +13,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras import losses, callbacks
-import tensorflow_io as tfio
+# import tensorflow_io as tfio
 from tensorflow.keras.models import *
 from tensorflow.keras import layers
 from tensorflow.keras.layers import *
