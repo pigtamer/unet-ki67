@@ -36,8 +36,9 @@ lr = lr*num_gpus # 线性scale学习率
 
 lrstr = "{:.2e}".format(lr)
 
-bs = 32
-bs_v = 16
+bs_single = 32
+bs = bs_single*num_gpus
+bs_v = bs_single*num_gpus
 verbose = 1
 
 checkpoint_period = 5
@@ -105,7 +106,7 @@ configstring = "%s_%s_%s_%s_%d_lr%s_bs%sxn%s" % (
     edge_size,
     lrstr,
     bs,
-    hvd.size(),
+    num_gpus,
 )
 print(configstring)
 
