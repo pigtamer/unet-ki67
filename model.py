@@ -70,7 +70,7 @@ def smunet(loss="focal", pretrained_weights=None):
             loss=loss_dict[loss],
             metrics=[
                 sm.metrics.iou_score,
-                CohenKappaImg(num_classes=2, sparse_labels=True),
+                # CohenKappaImg(num_classes=2, sparse_labels=True),
                 "accuracy",
             ],
         )

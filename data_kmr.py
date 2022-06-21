@@ -95,12 +95,13 @@ def load_kmr_tfdata(
         img = tf.io.decode_png(img, channels=3)
 
         img = tf.image.convert_image_dtype(img, tf.float32)
-
+        
         img = tf.image.resize(img, [target_size[0], target_size[1]])
         # resize the image to the desired size.
         if aug:
             img = augment(img)
         return img
+
     def parse_mask(file_path):
         img = tf.io.read_file(file_path)
         # convert the compressed string to a 3D uint8 tensor
@@ -182,7 +183,7 @@ def load_kmr_tfdata(
             for foldnum in cross_fold
         ]
 
-        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
+        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=False, seed=seed)
         # -------------- >>
         # ⬇️ Horovod 的残留代码。在Tsubame的不同worker上，其rank不同。
         # 因此，数据的不同部分被均分到各个节点
@@ -191,7 +192,7 @@ def load_kmr_tfdata(
         # -------------- <<
 
         # list_ds = list_ds.shard(num_shards=num_shards, index=0)
-        print(list_ds)
+        # print(list_ds)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         if staintype != "DAB" and staintype != "Mask":
             labeled_ds = list_ds.map(parse_image, num_parallel_calls=AUTOTUNE)

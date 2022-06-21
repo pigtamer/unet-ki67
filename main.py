@@ -26,7 +26,7 @@ trainGene, n_train = load_kmr_tfdata(
     aug=False,
     target_size=target_size,
     cache=False,
-    shuffle_buffer_size=6000,
+    shuffle_buffer_size=16,
     seed=seed,
     num_shards=1
 )
@@ -38,7 +38,7 @@ valGene, n_val = load_kmr_tfdata(
     stains=["HE", "Mask"],
     aug=False,
     cache=False,
-    shuffle_buffer_size=1000,
+    shuffle_buffer_size=16,
     seed=seed,
     num_shards=1
 )
@@ -55,6 +55,15 @@ testGene, n_test = load_kmr_test(
 )
 # testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
 
+# ======　检查配对 =======
+# for kk, (tx, ty) in zip(range(n_train), trainGene):
+#     for img, msk in zip(tx, ty):
+#         print(img.numpy().max(), "   ", msk.numpy().max())
+#         plt.figure()
+#         plt.axis(False)
+#         plt.subplot(121);plt.imshow(img)
+#         plt.subplot(122);plt.imshow(msk)
+#         plt.show()
 
 print(n_train)
 step_num = n_train // bs
@@ -150,7 +159,7 @@ else:
         #model.evaluate(valGene, steps=n_val//bs_v)
         # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
         # kappa.update_state(y_true , y_pred)
-    for k in range(30, 31):
+    for k in range(50,51):
         # continue each model checkpoint
         start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
             framework,
@@ -303,7 +312,7 @@ else:
             # num_negative_ += num_negative
             # avgiou += iou
             # plt.show()
-            res, hema_texture, mask = interactive_prediction(tx[0, :,:,:3], model)
+            res, hema_texture, mask = interactive_prediction(tx[0, :,:,:], model)
             plt.imsave(
                 "/raid/ji/DATA/KimuraLIpng/ihc_%d.png"
                 % kk,

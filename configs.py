@@ -11,8 +11,10 @@ val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 
 model_dir = HOME_PATH + "/2205ep50/ALL/ep50/"
+model_dir = HOME_PATH + "/models/"
 
 seed = 1
+flag_test = 0
 
 # ------------------ 指定训练·测试图像尺寸 ---------------------
 edge_size = 256
@@ -28,22 +30,21 @@ DEVICES=[
 
 num_gpus=len(DEVICES)
 
-lr = 2.5E-4
+lr = 1E-3
 lr = lr*num_gpus # 线性scale学习率
 
 # ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
-# lr = 1e-3/8
+lr = 16e-3
 
 lrstr = "{:.2e}".format(lr)
 
-bs_single = 32
+bs_single = 64
 bs = bs_single*num_gpus
 bs_v = bs_single*num_gpus
 verbose = 1
 
 checkpoint_period = 5
 
-flag_test = 0
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -56,12 +57,13 @@ framework = "hvd-tfk"
 
 # model_name = "deeplabv3"
 model_name = "dense121-unet"
+# model_name = "unet-reduce"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
 id_loocv = 8
 #data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-data_name = "ALL_imgnet_rand"
+data_name = "ALL_None_rand-delcohen"
 # data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
 oversampling = 1
 # FIXED_STEPS = 1600
