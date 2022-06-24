@@ -281,9 +281,9 @@ else:
             0,
         )
         avgiou = 0
-        for id_loocv_t in range(8,9):
+        for id_loocv_t in range(9):
             # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
-            data_name_t = "kmr-imgnet-sing%s"%id_loocv_t
+            data_name_t = "kmr-imgnet-loocv%s"%id_loocv_t
             start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
                     framework,
                     model_name,

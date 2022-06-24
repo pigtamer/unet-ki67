@@ -10,7 +10,7 @@ val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 # val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 
-model_dir = HOME_PATH + "/ep50models/sing/ep50/"
+model_dir = HOME_PATH + "/ep50models/loocv/ep50/"
 
 seed = 1
 
