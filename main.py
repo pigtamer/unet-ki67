@@ -150,7 +150,7 @@ else:
         #model.evaluate(valGene, steps=n_val//bs_v)
         # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
         # kappa.update_state(y_true , y_pred)
-    for k in range(30, 31):
+    for k in range(50, 51):
         # continue each model checkpoint
         start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
             framework,
@@ -164,7 +164,7 @@ else:
             k,
         )
         # sm.set_framework('tf.keras')
-        model.load_weights(start_path)
+        # model.load_weights(start_path)
 
         # print(n_val//bs_v)
         # from sklearn.metrics import roc_curve, auc
@@ -281,9 +281,38 @@ else:
             0,
         )
         avgiou = 0
-        for kk, (tx, ty) in zip(range(n_test), testGene):
-            # if kk< 41: continue
-            # if kk > 46: break
+        for id_loocv_t in range(8,9):
+            # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
+            data_name_t = "kmr-imgnet-sing%s"%id_loocv_t
+            start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+                    framework,
+                    model_name,
+                    data_name_t,
+                    loss_name,
+                    edge_size,
+                    lrstr,
+                    # bs,
+                    continue_step[0] + continue_step[1],
+                    k,
+                )
+            model.load_weights(start_path)
+            print(start_path)
+            testGene, n_test = load_kmr_test(
+                                dataset_path=test_path,
+                                target_size=(2048, 2048),
+                                batch_size=1,
+                                cross_fold=cross_fold[1],
+                                wsi_ids=[foldmat[0, 2],],
+                                aug=False,
+                                cache=False,
+                                shuffle_buffer_size=128,
+                                seed=seed,
+                            )
+            for kk, (tx, ty) in zip(range(n_test), testGene):
+                if data_name != "ALL":
+                    if kk< test_list[id_loocv_t][0]: continue
+                    if kk > test_list[id_loocv_t][1]: break
+            
             # tn = ty
             # (
             #     num_tp,
@@ -303,12 +332,12 @@ else:
             # num_negative_ += num_negative
             # avgiou += iou
             # plt.show()
-            res, hema_texture, mask = interactive_prediction(tx[0, :,:,:3], model)
-            plt.imsave(
-                "/raid/ji/DATA/KimuraLIpng/ihc_%d.png"
-                % kk,
-                res.reshape(2048, 2048, 3),
-            )
+                res, hema_texture, mask = interactive_prediction(tx[0, :,:,:3], model)
+                plt.imsave(
+                    "/raid/ji/DATA/KimuraLIpng/ihc_%d.png"
+                    % kk,
+                    res.reshape(2048, 2048, 3),
+                )
             # plt.imsave(
             #     "/home/cunyuan/resdenseunet/he_%d.png"
             #     % kk,

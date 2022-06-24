@@ -10,7 +10,7 @@ val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 # val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 
-model_dir = HOME_PATH + "/2205ep50/ALL/ep50/"
+model_dir = HOME_PATH + "/ep50models/sing/ep50/"
 
 seed = 1
 
@@ -32,7 +32,7 @@ lr = 2.5E-4
 lr = lr*num_gpus # 线性scale学习率
 
 # ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
-# lr = 1e-3/8
+lr = 3.13E-5
 
 lrstr = "{:.2e}".format(lr)
 
@@ -43,7 +43,7 @@ verbose = 1
 
 checkpoint_period = 5
 
-flag_test = 0
+flag_test = 1
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -59,12 +59,15 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-id_loocv = 8
-#data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-data_name = "ALL_imgnet_rand"
+id_loocv = 7
+data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
+# data_name = "ALL"
+# data_name = "loocv%s"%id_loocv
 # data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
 oversampling = 1
 # FIXED_STEPS = 1600
+
+test_list=[[6, 11], [12, 17], [0,5], [24, 29], [30, 34], [47, 52], [35, 40], [18, 23], [41, 46]]
 
 cross_fold = [["001", "002", "003", "004", "006", "007", "008", "009"], ["005", "010"]]
 
