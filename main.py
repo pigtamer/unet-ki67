@@ -65,7 +65,7 @@ model_checkpoint = ModelCheckpoint(
         monitor="loss",
         verbose=verbose,
         save_best_only=False,
-        save_weights_only=False,
+        save_weights_only=True,
         mode="auto",
         save_freq=checkpoint_period * step_num,
     )
@@ -83,6 +83,8 @@ model = smunet(loss=loss_name)
 #  	# pl=[256,128,64,32,16], # reverted
 #  	)
 # model = kumatt(loss=loss_name)
+
+
 
 if flag_continue:
     start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+%02d" % (

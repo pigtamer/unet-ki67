@@ -63,14 +63,16 @@ def smunet(loss="focal", pretrained_weights=None):
             decoder_filters=(256, 128, 64, 32, 16),
             decoder_use_batchnorm=True,
         )
-
+        model = tf.keras.models.experimental.SharpnessAwareMinimization(
+            model, rho=0.05, num_batch_splits=None, name=None
+        )
         opt = tf.optimizers.Adam(lr)
         model.compile(
             optimizer=opt,
             loss=loss_dict[loss],
             metrics=[
                 sm.metrics.iou_score,
-                CohenKappaImg(num_classes=2, sparse_labels=True),
+                # CohenKappaImg(num_classes=2, sparse_labels=True),
                 "accuracy",
             ],
         )
