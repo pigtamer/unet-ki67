@@ -3,6 +3,9 @@ from utils import *
 import tensorflow as tf
 from datetime import datetime
 import os
+
+scheme = "ALL"
+
 HOME_PATH = "/raid/ji"
 # train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
@@ -10,7 +13,7 @@ val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 # val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 
-model_dir = HOME_PATH + "/ep50models/sing/ep50/"
+model_dir = HOME_PATH + "/ep50models/"+scheme+"/ep50/"
 
 seed = 1
 
@@ -60,10 +63,11 @@ model_name = "dense121-unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
 id_loocv = 7
-data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-# data_name = "ALL"
-# data_name = "loocv%s"%id_loocv
-# data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
+data_name_dict = {"ALL": "ALL",
+            "LOCOCV": "kmr-imgnet-loocv%s-noaug"%id_loocv,
+            "SINGLE": "kmr-imgnet-sing%s"%id_loocv,}
+data_name = data_name_dict[scheme]
+
 oversampling = 1
 # FIXED_STEPS = 1600
 

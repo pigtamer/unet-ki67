@@ -163,63 +163,58 @@ else:
             continue_step[0] + continue_step[1],
             k,
         )
-        # sm.set_framework('tf.keras')
-        # model.load_weights(start_path)
 
-        # print(n_val//bs_v)
-        # from sklearn.metrics import roc_curve, auc
+        # ----------------------------------------------------------------------
+        # ROC曲线绘制
+        # ----------------------------------------------------------------------
+        sm.set_framework('tf.keras')
+        model.load_weights(start_path)
 
-        # fig = plt.figure(figsize=(10,10), dpi=300)
-        # plt.plot([0, 1], [0, 1], "k--")
-        # auclist = []
-        # for cases in ["All cases"]:
-        #     for cases in [foldmat[2, 2],]:
-        #         valGene, n_val = load_kmr_tfdata(
-        #                         dataset_path=val_path,
-        #                         batch_size=bs_v,
-        #                         cross_fold=cross_fold[1],
-        #                         # wsi_ids=foldmat.ravel(),
-        #                         # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
-        #                         wsi_ids=[cases],
-        #                         stains=["HE", "Mask"],
-        #                         aug=False,
-        #                         cache=False,
-        #                         shuffle_buffer_size=128,
-        #                         seed=seed,
-        #                     )
-        #         for k_val, (x, y) in zip( tqdm(range(n_val//bs_v)), valGene):
-        #         # for k_val, (x, y) in zip( tqdm(range(1)), valGene):
-        #             f = model.predict(x, batch_size=bs_v)
-        #             # plt.show()
-        #             # print(k_val)
-        #             y = y.numpy().reshape(-1,)[::100]
-        #             f = f.reshape(-1,)[::100]
-        #             # print(classification_report(y > 0, f>0.5))
-        #             if k_val == 0:
-        #                 Y, F = y, f
-        #                 # thresh_argmax_f1 = 0
-        #                 # print(start_path)
-        #                 # print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
-        #             else:
-        #                 Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
-        #         print(classification_report(Y > 0, F>0.5))
-        #         np.savetxt("%s.csv"%cases, [Y, F], delimiter=",")
-        #         fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-        #         area_under_curve = auc(fpr, tpr)
-        #         auclist.append(area_under_curve)
-        #         plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
-        #         plt.xlabel("False positive rate")
-        #         plt.ylabel("True positive rate")
-        #         plt.title("ROC curve")
-        # legs = ['Luck']+['All cases']
-        # # legs = ['Luck']+[x[6:10] for x in foldmat.ravel()]
-        # for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
-        # plt.legend(legs, loc="best")
-        # plt.tight_layout()
-        # plt.grid()
-        # # plt.show()
-        # plt.savefig("/home/cunyuan/roc.png")
-        # exit(0)
+        print(n_val//bs_v)
+        from sklearn.metrics import roc_curve, auc
+
+        fig = plt.figure(figsize=(10,10), dpi=300)
+        plt.plot([0, 1], [0, 1], "k--")
+        auclist = []
+        valGene, n_val = load_kmr_tfdata(
+                        dataset_path=val_path,
+                        batch_size=bs_v,
+                        cross_fold=cross_fold[1],
+                        wsi_ids=val_ids,
+                        stains=["HE", "Mask"],
+                        aug=False,
+                        cache=False,
+                        shuffle_buffer_size=128,
+                        seed=seed,
+                    )
+        for k_val, (x, y) in zip( tqdm(range(n_val//bs_v)), valGene):
+            f = model.predict(x, batch_size=bs_v)
+            y = y.numpy().reshape(-1,)[::100]
+            f = f.reshape(-1,)[::100]
+            if k_val == 0:
+                Y, F = y, f
+            else:
+                Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
+        print(classification_report(Y > 0, F>0.5))
+        # np.savetxt("%s.csv"%cases, [Y, F], delimiter=",")
+        fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
+        area_under_curve = auc(fpr, tpr)
+        auclist.append(area_under_curve)
+        plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
+        plt.xlabel("False positive rate")
+        plt.ylabel("True positive rate")
+        plt.title("ROC curve")
+
+        legs = ['Luck']+['All cases']
+        # legs = ['Luck']+[x[6:10] for x in foldmat.ravel()]
+        for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
+        
+        plt.legend(legs, loc="best")
+        plt.tight_layout()
+        plt.grid()
+
+        plt.savefig("/home/cunyuan/roc.png")
+        exit(0)
 
         
 
@@ -283,7 +278,7 @@ else:
         avgiou = 0
         for id_loocv_t in range(8,9):
             # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
-            data_name_t = "kmr-imgnet-sing%s"%id_loocv_t
+            data_name_t = "kmr-imgnet-%s%s"%(scheme, id_loocv_t)
             start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
                     framework,
                     model_name,
