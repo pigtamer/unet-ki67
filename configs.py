@@ -3,6 +3,9 @@ from utils import *
 import tensorflow as tf
 from datetime import datetime
 import os
+
+scheme = "LOCOCV"
+
 HOME_PATH = "/raid/ji"
 # train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
@@ -10,8 +13,7 @@ val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
 # val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 
-model_dir = HOME_PATH + "/2205ep50/ALL/ep50/"
-model_dir = HOME_PATH + "/models/"
+model_dir = HOME_PATH + "/ep50models/"+scheme+"/ep50/"
 
 seed = 1
 flag_test = 0
@@ -34,7 +36,7 @@ lr = 1E-3
 lr = lr*num_gpus # 线性scale学习率
 
 # ------------------ 强制设置学习率！！！用后还原！！！ ---------------------
-lr = 16e-3
+lr = 3.13E-5
 
 lrstr = "{:.2e}".format(lr)
 
@@ -45,6 +47,7 @@ verbose = 1
 
 checkpoint_period = 5
 
+flag_test = 1
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -61,12 +64,16 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-id_loocv = 8
-#data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-data_name = "ALL_None_rand-delcohen"
-# data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
+id_loocv = 7
+data_name_dict = {"ALL": "ALL",
+            "LOCOCV": "kmr-imgnet-loocv%s-noaug"%id_loocv,
+            "SINGLE": "kmr-imgnet-sing%s"%id_loocv,}
+data_name = data_name_dict[scheme]
+
 oversampling = 1
 # FIXED_STEPS = 1600
+
+test_list=[[6, 11], [12, 17], [0,5], [24, 29], [30, 34], [47, 52], [35, 40], [18, 23], [41, 46]]
 
 cross_fold = [["001", "002", "003", "004", "006", "007", "008", "009"], ["005", "010"]]
 

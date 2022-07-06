@@ -159,7 +159,7 @@ else:
         #model.evaluate(valGene, steps=n_val//bs_v)
         # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
         # kappa.update_state(y_true , y_pred)
-    for k in range(50,51):
+    for k in range(50, 51):
         # continue each model checkpoint
         start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
             framework,
@@ -172,63 +172,89 @@ else:
             continue_step[0] + continue_step[1],
             k,
         )
-        # sm.set_framework('tf.keras')
+
+        # ----------------------------------------------------------------------
+        # ROC曲线绘制
+        # ----------------------------------------------------------------------
+        sm.set_framework('tf.keras')
         model.load_weights(start_path)
 
-        # print(n_val//bs_v)
-        # from sklearn.metrics import roc_curve, auc
+        print(n_val//bs_v)
+        from sklearn.metrics import roc_curve, auc
 
-        # fig = plt.figure(figsize=(10,10), dpi=300)
-        # plt.plot([0, 1], [0, 1], "k--")
-        # auclist = []
-        # for cases in ["All cases"]:
-        #     for cases in [foldmat[2, 2],]:
-        #         valGene, n_val = load_kmr_tfdata(
-        #                         dataset_path=val_path,
-        #                         batch_size=bs_v,
-        #                         cross_fold=cross_fold[1],
-        #                         # wsi_ids=foldmat.ravel(),
-        #                         # wsi_ids=np.hstack([foldmat[1, :]]).ravel(),
-        #                         wsi_ids=[cases],
-        #                         stains=["HE", "Mask"],
-        #                         aug=False,
-        #                         cache=False,
-        #                         shuffle_buffer_size=128,
-        #                         seed=seed,
-        #                     )
-        #         for k_val, (x, y) in zip( tqdm(range(n_val//bs_v)), valGene):
-        #         # for k_val, (x, y) in zip( tqdm(range(1)), valGene):
-        #             f = model.predict(x, batch_size=bs_v)
-        #             # plt.show()
-        #             # print(k_val)
-        #             y = y.numpy().reshape(-1,)[::100]
-        #             f = f.reshape(-1,)[::100]
-        #             # print(classification_report(y > 0, f>0.5))
-        #             if k_val == 0:
-        #                 Y, F = y, f
-        #                 # thresh_argmax_f1 = 0
-        #                 # print(start_path)
-        #                 # print("Model @ epoch %d" % (k * checkpoint_period), "\n", "-*-" * 10)
-        #             else:
-        #                 Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
-        #         print(classification_report(Y > 0, F>0.5))
-        #         np.savetxt("%s.csv"%cases, [Y, F], delimiter=",")
-        #         fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-        #         area_under_curve = auc(fpr, tpr)
-        #         auclist.append(area_under_curve)
-        #         plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
-        #         plt.xlabel("False positive rate")
-        #         plt.ylabel("True positive rate")
-        #         plt.title("ROC curve")
-        # legs = ['Luck']+['All cases']
-        # # legs = ['Luck']+[x[6:10] for x in foldmat.ravel()]
-        # for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
-        # plt.legend(legs, loc="best")
-        # plt.tight_layout()
-        # plt.grid()
-        # # plt.show()
-        # plt.savefig("/home/cunyuan/roc.png")
-        # exit(0)
+        fig = plt.figure(figsize=(10,10), dpi=300)
+        plt.plot([0, 1], [0, 1], "k--")
+        auclist = []
+        legs = ['Luck']
+        show_id_list = ["1-1", "1-2", "1-3", 
+            "2-1", "2-2", "2-3",
+            "3-1", "3-2", "3-3"]
+        for id_loocv_t in range(9):
+            data_name_dict_t = {"ALL": "ALL",
+                        "LOCOCV": "kmr-imgnet-loocv%s-noaug"%id_loocv_t,
+                        "SINGLE": "kmr-imgnet-sing%s"%id_loocv_t,}
+            data_name_t = data_name_dict_t[scheme]
+            start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+                    framework,
+                    model_name,
+                    data_name_t,
+                    loss_name,
+                    edge_size,
+                    lrstr,
+                    continue_step[0] + continue_step[1],
+                    k,
+                )
+            print("AUC test: ", start_path)
+            model.load_weights(start_path)
+            print(val_ids[id_loocv_t])
+            valGene, n_val = load_kmr_tfdata(
+                            dataset_path=val_path,
+                            batch_size=bs_v,
+                            cross_fold=cross_fold[1],
+                            wsi_ids=[val_ids[id_loocv_t]],
+                            stains=["HE", "Mask"],
+                            aug=False,
+                            cache=False,
+                            shuffle_buffer_size=128,
+                            seed=seed,
+                        )
+
+            # ======== 评估IOU ====================
+            model.evaluate(x = valGene, 
+                            batch_size = bs_v,
+                            verbose=1,
+                            steps=n_val//bs_v,
+                            callbacks=callbacks,
+                            )
+
+            # ======== 评估AUC ====================
+            for k_val, (x, y) in zip( range(n_val//bs_v), valGene):
+                f = model.predict(x, batch_size=bs_v, verbose=0)
+                y = y.numpy().reshape(-1,)#[::1000]
+                f = f.reshape(-1,)#[::1000]
+                if k_val == 0:
+                    Y, F = y, f
+                else:
+                    Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
+            print(classification_report(Y > 0, F>0.5))
+            fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
+            area_under_curve = auc(fpr, tpr)
+            auclist.append(area_under_curve)
+            plt.plot(fpr[::1000], tpr[::1000], label="%s"%id_loocv_t+", AUC = {:.3f}".format(area_under_curve))
+            legs = legs + [show_id_list[id_loocv_t]]
+        plt.xlabel("False positive rate")
+        plt.ylabel("True positive rate")
+        plt.title("ROC curve")
+
+
+        for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
+        
+        plt.legend(legs, loc="best")
+        plt.tight_layout()
+        plt.grid()
+
+        plt.savefig("/home/cunyuan/roc.png")
+        exit(0)
 
         
 
@@ -290,9 +316,38 @@ else:
             0,
         )
         avgiou = 0
-        for kk, (tx, ty) in zip(range(n_test), testGene):
-            # if kk< 41: continue
-            # if kk > 46: break
+        for id_loocv_t in range(8,9):
+            # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
+            data_name_t = "kmr-imgnet-%s%s"%(scheme, id_loocv_t)
+            start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
+                    framework,
+                    model_name,
+                    data_name_t,
+                    loss_name,
+                    edge_size,
+                    lrstr,
+                    # bs,
+                    continue_step[0] + continue_step[1],
+                    k,
+                )
+            model.load_weights(start_path)
+            print(start_path)
+            testGene, n_test = load_kmr_test(
+                                dataset_path=test_path,
+                                target_size=(2048, 2048),
+                                batch_size=1,
+                                cross_fold=cross_fold[1],
+                                wsi_ids=[foldmat[0, 2],],
+                                aug=False,
+                                cache=False,
+                                shuffle_buffer_size=128,
+                                seed=seed,
+                            )
+            for kk, (tx, ty) in zip(range(n_test), testGene):
+                if data_name != "ALL":
+                    if kk< test_list[id_loocv_t][0]: continue
+                    if kk > test_list[id_loocv_t][1]: break
+            
             # tn = ty
             # (
             #     num_tp,
@@ -312,12 +367,12 @@ else:
             # num_negative_ += num_negative
             # avgiou += iou
             # plt.show()
-            res, hema_texture, mask = interactive_prediction(tx[0, :,:,:], model)
-            plt.imsave(
-                "/raid/ji/DATA/KimuraLIpng/ihc_%d.png"
-                % kk,
-                res.reshape(2048, 2048, 3),
-            )
+                res, hema_texture, mask = interactive_prediction(tx[0, :,:,:3], model)
+                plt.imsave(
+                    "/raid/ji/DATA/KimuraLIpng/ihc_%d.png"
+                    % kk,
+                    res.reshape(2048, 2048, 3),
+                )
             # plt.imsave(
             #     "/home/cunyuan/resdenseunet/he_%d.png"
             #     % kk,
