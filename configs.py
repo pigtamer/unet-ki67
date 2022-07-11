@@ -1,8 +1,30 @@
 #%%
-from utils import *
-import tensorflow as tf
 from datetime import datetime
 import os
+import argparse
+
+# ------------------ 指定GPU资源 ---------------------
+devices = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = devices
+DEVICES=[
+"/gpu:%s"%id for id in devices[::2]# ::2 skips puncs in device string
+]
+parser = argparse.ArgumentParser()
+parser.add_argument("--local_rank", type=int, default=0)
+args = parser.parse_args()
+
+import torch
+
+
+torch.cuda.set_device(args.local_rank)
+device = torch.device('cuda', args.local_rank)
+torch.distributed.init_process_group(backend='nccl')
+
+
+from utils import *
+
+
+num_gpus=len(DEVICES)
 
 scheme = "ALL"
 
@@ -16,6 +38,11 @@ test_path = HOME_PATH + "/DATA/KimuraLIpng/"
 model_dir = HOME_PATH + "/ep50models/"+scheme+"/ep50/"
 
 seed = 1
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+
 flag_test = 0
 
 # ------------------ 指定训练·测试图像尺寸 ---------------------
@@ -23,14 +50,7 @@ edge_size = 256
 target_size = (edge_size, edge_size)
 test_size = (2048, 2048)
 
-# ------------------ 指定GPU资源 ---------------------
-devices = "0,1,2,3"
-os.environ["CUDA_VISIBLE_DEVICES"] = devices
-DEVICES=[
-"/gpu:%s"%id for id in devices[::2]# ::2 skips puncs in device string
-]
 
-num_gpus=len(DEVICES)
 
 lr = 1E-3
 lr = lr*num_gpus # 线性scale学习率
@@ -56,11 +76,9 @@ initial_epoch = continue_step[0] + continue_step[1]
 
 num_epoches = 51
 
-framework = "hvd-tfk"
+framework = "torch-ddp"
 
-# model_name = "deeplabv3"
 model_name = "dense121-unet"
-# model_name = "unet-reduce"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 

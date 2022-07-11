@@ -1,25 +1,3 @@
-""" Dealing with the data from Kimura
-
-* Plan 1. [OK]
-
-Inter-WSI validation
-Do not use the folds inside of each WSI.
-We have 9 WSIs. Presume that chips in one case should not be mixed together,
-then inter-WSI validation is to choose k WSIs for training and 9-k WSIs for validation at a time.
-
-
-* Plan 2.
-
-Cross validation.
-Use folds inside each WSI.
-Now we created 10 folds. k folds (say 9) from ALL WSIs are involved in training
-    and 10-k folds are involved in validation at a time.
-
-* Plan 3.
-Data augmentation and preprocessing with TF generic API
---> i.e. use png/jpeg decoding
-"""
-
 #%%
 import os, glob, shutil as shu
 import numpy as np
@@ -45,33 +23,6 @@ TILES_(256, 256)/
 ...
 
 """
-
-#%%
-# * 1. Inter-WSI cross validation
-
-# * 1. 选择8个做training/validation，1个做test
-""" 
-* 1 获取编号列表
-* 2 取8个
-* 3 在每个子文件夹中都取这8个片子
-    DAB--1~8
-    Mask--1~8
-    ...
-* 4 Write a generator to return 写生成器返回：
-    DAB
-        WSI1
-            Tiles
-                Tumor
-                    <All 10 folds>
-                        * ! images------.
-    Chips ------------------------------|
-        WSI1                            |
-            Tiles                       |
-                Tumor                   |
-                    <All 10 folds>      |
-                        * ! images -----.------- Zipped one by one as tuples
-"""
-from itertools import combinations as comb
 
 # %%
 # * 3. Tf.data as input pipeline
