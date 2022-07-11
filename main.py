@@ -219,7 +219,7 @@ else:
                             seed=seed,
                         )
 
-            # ======== 评估IOU ====================
+            #======== 评估IOU ====================
             model.evaluate(x = valGene, 
                             batch_size = bs_v,
                             verbose=1,
@@ -228,85 +228,33 @@ else:
                             )
 
             # ======== 评估AUC ====================
-            for k_val, (x, y) in zip( range(n_val//bs_v), valGene):
-                f = model.predict(x, batch_size=bs_v, verbose=0)
-                y = y.numpy().reshape(-1,)#[::1000]
-                f = f.reshape(-1,)#[::1000]
-                if k_val == 0:
-                    Y, F = y, f
-                else:
-                    Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
-            print(classification_report(Y > 0, F>0.5))
-            fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-            area_under_curve = auc(fpr, tpr)
-            auclist.append(area_under_curve)
-            plt.plot(fpr[::1000], tpr[::1000], label="%s"%id_loocv_t+", AUC = {:.3f}".format(area_under_curve))
-            legs = legs + [show_id_list[id_loocv_t]]
-        plt.xlabel("False positive rate")
-        plt.ylabel("True positive rate")
-        plt.title("ROC curve")
+        #     for k_val, (x, y) in zip( range(n_val//bs_v), valGene):
+        #         f = model.predict(x, batch_size=bs_v, verbose=0)
+        #         y = y.numpy().reshape(-1,)[::1000]
+        #         f = f.reshape(-1,)[::1000]
+        #         if k_val == 0:
+        #             Y, F = y, f
+        #         else:
+        #             Y, F = np.concatenate([Y, y]), np.concatenate([F, f])
+        #     print(classification_report(Y > 0, F>0.5))
+        #     fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
+        #     area_under_curve = auc(fpr, tpr)
+        #     auclist.append(area_under_curve)
+        #     plt.plot(fpr[::1000], tpr[::1000], label="%s"%id_loocv_t+", AUC = {:.3f}".format(area_under_curve))
+        #     legs = legs + [show_id_list[id_loocv_t]]
+        # plt.xlabel("False positive rate")
+        # plt.ylabel("True positive rate")
+        # plt.title("ROC curve")
 
 
-        for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
+        # for k in range(1, len(legs)): legs[k] += ", {:.3f}".format(auclist[k-1])
         
-        plt.legend(legs, loc="best")
-        plt.tight_layout()
-        plt.grid()
+        # plt.legend(legs, loc="best")
+        # plt.tight_layout()
+        # plt.grid()
 
-        plt.savefig("/home/cunyuan/roc.png")
-        exit(0)
+        # plt.savefig("/home/cunyuan/roc.png")
 
-        
-
-        # ----------------------------------------------------------------------
-        # 残留代码，决定最佳阈值
-        # ----------------------------------------------------------------------
-        """
-            # print(k_val)
-        # f1_max = 0
-        # for thresh in np.linspace(0, 1, 5):
-        #     f1 = f1_score(Y.reshape(-1, ) > 0, F.reshape(-1, ) > thresh)
-        #     if f1 > f1_max:
-        #         f1_max = f1
-        #         thresh_argmax_f1 = thresh
-        #     print(thresh)
-        # print("Max F1=: ", f1_max, " @ thr: ", thresh_argmax_f1)
-        thresh_argmax_f1 = 0.5
-        iou = jaccard_score(Y.reshape(-1,) > 0, F.reshape(-1,) > thresh_argmax_f1)
-        print("IOU= ", iou)
-        print(classification_report(Y.reshape(-1,) > 0, F.reshape(-1,) > thresh_argmax_f1))
-        from sklearn.metrics import roc_curve, auc
-        # roc(Y, F, thresh=0)
-        fpr, tpr, _ = roc_curve(Y.ravel(), F.ravel())
-        area_under_curve = auc(fpr, tpr)
-        plt.figure(figsize=(8, 8), dpi=300)
-        plt.plot([0, 1], [0, 1], "k--")
-        plt.plot(fpr, tpr, label="AUC = {:.3f}".format(area_under_curve))
-        plt.xlabel("False positive rate")
-        plt.ylabel("True positive rate")
-        plt.title("ROC curve")
-        plt.legend(loc="best")
-        plt.tight_layout()
-        plt.grid()
-        plt.show()
-        for kk in range(min(bs_v, 10)):
-            fig = plt.figure(figsize=(20, 20))
-            # plt.subplots(2,2)
-            plt.subplot(221)
-            plt.imshow(x[kk, :, :, :])
-            plt.title("Input")
-            plt.subplot(222)
-            plt.imshow(y[kk, :, :, 0], cmap="gray")
-            plt.title("GT")
-            plt.subplot(223)
-            plt.imshow(f[kk, :, :, 0], cmap="gray")
-            plt.title("Pred")
-            plt.subplot(224)
-            plt.imshow((f[kk, :, :, 0] > thresh_argmax_f1), cmap="gray")
-            plt.title("Pred thresh")
-            fig.tight_layout()
-            plt.show()
-        """
         num_tp_, num_tn_, num_pred_, num_npred_, num_positive_, num_negative_ = (
             0,
             0,

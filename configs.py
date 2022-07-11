@@ -4,7 +4,7 @@ import tensorflow as tf
 from datetime import datetime
 import os
 
-scheme = "LOCOCV"
+scheme = "ALL"
 
 HOME_PATH = "/raid/ji"
 # train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"

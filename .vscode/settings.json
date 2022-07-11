@@ -1,4 +1,7 @@
 {
     "python.pythonPath": "/home/cunyuan/.conda/envs/tf2/bin/python",
-    "python.formatting.provider": "black"
+    "python.formatting.provider": "black",
+    "window.commandCenter": true,
+    "peacock.affectTitleBar": false,
+    "workbench.editor.untitled.labelFormat": "content"
 }
