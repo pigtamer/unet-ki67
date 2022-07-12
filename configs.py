@@ -62,7 +62,7 @@ framework = "hvd-tfk"
 model_name = "dense121-unet"
 # model_name = "unet-reduce"
 
-loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
+loss_name = "l1"  # focalja, bce, bceja, ja, dice...
 
 id_loocv = 7
 data_name_dict = {"ALL": "ALL",

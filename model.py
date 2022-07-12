@@ -53,8 +53,8 @@ def smunet(loss="focal", pretrained_weights=None):
         model = sm.Unet(
             backbone_name="densenet121",
             input_shape=(256, 256, 3),
-            classes=1,
-            activation="sigmoid",
+            classes=3,
+            activation="relu",
             weights=None,
             encoder_weights="imagenet",
             encoder_freeze=False,
