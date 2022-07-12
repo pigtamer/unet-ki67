@@ -54,7 +54,7 @@ def smunet(loss="focal", pretrained_weights=None):
             backbone_name="densenet121",
             input_shape=(256, 256, 3),
             classes=3,
-            activation="relu",
+            activation="sigmoid",
             weights=None,
             encoder_weights="imagenet",
             encoder_freeze=False,

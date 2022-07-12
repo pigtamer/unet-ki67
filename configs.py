@@ -4,7 +4,7 @@ import tensorflow as tf
 from datetime import datetime
 import os
 
-scheme = "LOCOCV"
+scheme = "ALL"
 
 HOME_PATH = "/raid/ji"
 # train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
@@ -47,7 +47,7 @@ verbose = 1
 
 checkpoint_period = 5
 
-flag_test = 1
+flag_test = 0
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -68,7 +68,7 @@ id_loocv = 7
 data_name_dict = {"ALL": "ALL",
             "LOCOCV": "kmr-imgnet-loocv%s-noaug"%id_loocv,
             "SINGLE": "kmr-imgnet-sing%s"%id_loocv,}
-data_name = data_name_dict[scheme]
+data_name = "ihc" + data_name_dict[scheme]
 
 oversampling = 1
 # FIXED_STEPS = 1600
