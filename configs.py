@@ -96,14 +96,21 @@ sing_group = [
     [8, 6, 7],
 ]
 
-# sing = sing_group[id_loocv]
-#tr_ids = np.hstack([foldmat.ravel()[:id_loocv], foldmat.ravel()[id_loocv + 1 :]])
-# tr_ids = [foldmat.ravel()[sing[1]], foldmat.ravel()[sing[2]]]
-tr_ids=foldmat.ravel() # Mixed
+if scheme == "LOOCV":
+    tr_ids = np.hstack([foldmat.ravel()[:id_loocv], foldmat.ravel()[id_loocv + 1 :]])
+    val_ids = [foldmat.ravel()[id_loocv]]
+elif scheme == "SING":
+    sing = sing_group[id_loocv]
+    tr_ids = [foldmat.ravel()[sing[1]], foldmat.ravel()[sing[2]]]
+    val_ids = [foldmat.ravel()[sing[0]]]
+elif scheme == "ALL":
+    tr_ids=foldmat.ravel() # Mixed
+    val_ids = foldmat.ravel()
+else:
+    print("Invalid training scheme")
+    exit(1)
 
-#val_ids = [foldmat.ravel()[id_loocv]]
-# val_ids = [foldmat.ravel()[sing[0]]]
-val_ids = foldmat.ravel()
+
 print(tr_ids)
 print(val_ids)
 
