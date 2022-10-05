@@ -152,7 +152,7 @@ else:
         #model.evaluate(valGene, steps=n_val//bs_v)
         # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
         # kappa.update_state(y_true , y_pred)
-    for k in range(50, 51):
+    for k in range(10, 10+1):
         # continue each model checkpoint
         start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
             framework,
@@ -283,9 +283,10 @@ else:
             0,
         )
         avgiou = 0
-        for id_loocv_t in range(9):
+        for id_loocv_t in range(1):
             # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
-            data_name_t = "kmr-imgnet-loocv%s"%id_loocv_t
+            data_name_t = "ALL"
+            # data_name_t = "kmr-imgnet-loocv%s"%id_loocv_t
             start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
                     framework,
                     model_name,
@@ -297,6 +298,15 @@ else:
                     continue_step[0] + continue_step[1],
                     k,
                 )
+            # model.build()
+            # import h5py
+            # with h5py.File(start_path, 'r') as f:
+            #     for k in f.keys():
+            #         for l in f[k].keys():
+            #             for m in f[k][l].keys():
+            #                 print(k+ " : " + m + " : " + str(f[k][l][m]))
+            # model.load_weights(start_path, by_name=True)
+            model.build(input_shape=(None, 256, 256, 3))
             model.load_weights(start_path)
             print(start_path)
             testGene, n_test = load_kmr_test(

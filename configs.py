@@ -3,14 +3,14 @@ from utils import *
 import tensorflow as tf
 from datetime import datetime
 import os
-HOME_PATH = "/raid/ji"
+HOME_PATH = "/wd_0/ji"
 # train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
-train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
-val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
-# val_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
-test_path = HOME_PATH + "/DATA/KimuraLIpng/"
+train_path = HOME_PATH + "/TILES(256, 256)"
+val_path = HOME_PATH + "/TILES(256, 256)"
+# val_path = HOME_PATH + "/TILES_256(1 in 10)"
+test_path = HOME_PATH + "/KimuraLIpng/"
 
-model_dir = HOME_PATH + "/ep50models/loocv/ep50/"
+model_dir = HOME_PATH + "/ep50models/LOCOCV/ep50/"
 
 seed = 1
 
@@ -43,7 +43,7 @@ verbose = 1
 
 checkpoint_period = 5
 
-flag_test = 0
+flag_test = 1
 flag_multi_gpu = 0
 
 flag_continue = 0
@@ -55,13 +55,13 @@ num_epoches = 51
 framework = "hvd-tfk"
 
 # model_name = "deeplabv3"
-model_name = "dense121-unet-SAM"
+model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
 id_loocv = 7
 # data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-data_name = "ALL"
+data_name = "ALL57"
 # data_name = "loocv%s"%id_loocv
 # data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
 oversampling = 1
