@@ -16,47 +16,36 @@ from sklearn.metrics import (
 )
 
 
-
-trainGene, n_train = load_kmr_tfdata(
+trainGene_n, _ = load_kmr57_tfdata(
     dataset_path=train_path,
     batch_size=bs,
     cross_fold=cross_fold[0],
-    wsi_ids=tr_ids,
+    wsi_ids=['7553','5425','3951','2189','3135','3315','4863','4565','2670','3006','3574','3597','3944','1508','0669','1115', '1295','2072','2204','3433','7144','1590','2400','6897','1963','2118','4013','4498','0003','2943','3525','2839','0790','1904','3235','2730','7883','3316','4640','0003','1883','2913','1559','2280','6018','2124','8132','2850'],
     stains=["HE", "Mask"], #DAB, Mask, HE< IHC
     aug=False,
     target_size=target_size,
     cache=False,
-    shuffle_buffer_size=6000,
+    shuffle_buffer_size=5000,
     seed=seed,
     num_shards=1
 )
-valGene, n_val = load_kmr_tfdata(
-    dataset_path=val_path,
-    batch_size=bs_v,
-    cross_fold=cross_fold[1],
-    wsi_ids=val_ids,
-    stains=["HE", "Mask"],
+valGene_n, _ = load_kmr57_tfdata(
+    dataset_path=train_path,
+    batch_size=bs,
+    cross_fold=cross_fold[0],
+    wsi_ids=['7015','1052','3768','5256','6747','8107','2502','7930','7885'],
+    stains=["HE", "Mask"], #DAB, Mask, HE< IHC
     aug=False,
+    target_size=target_size,
     cache=False,
-    shuffle_buffer_size=1000,
+    shuffle_buffer_size=5000,
     seed=seed,
     num_shards=1
 )
-testGene, n_test = load_kmr_test(
-    dataset_path=test_path,
-    target_size=(2048, 2048),
-    batch_size=1,
-    cross_fold=cross_fold[1],
-    wsi_ids=[foldmat[0, 2],],
-    aug=False,
-    cache=False,
-    shuffle_buffer_size=128,
-    seed=seed,
-)
-# testGene = testGenerator(test_path, as_gray=False, target_size=target_size)
+trainGene, n_train = trainGene_n
+valGene, n_val = valGene_n
 
-
-print(n_train)
+print("NUM TRAIN:", n_train)
 step_num = n_train // bs
 # step_num=10 # for test
 
@@ -283,9 +272,9 @@ else:
             0,
         )
         avgiou = 0
-        for id_loocv_t in range(1):
+        for id_loocv_t in range(10):
             # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
-            data_name_t = "ALL"
+            data_name_t = data_name
             # data_name_t = "kmr-imgnet-loocv%s"%id_loocv_t
             start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
                     framework,
@@ -298,6 +287,7 @@ else:
                     continue_step[0] + continue_step[1],
                     k,
                 )
+            start_path = model_dir+"hvd-tfk-dense121-unet__G123-57-PAD_bceja_256_lr1.00e-03_ep00+50.h5"
             # model.build()
             # import h5py
             # with h5py.File(start_path, 'r') as f:

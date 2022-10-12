@@ -63,9 +63,9 @@ def smunet(loss="focal", pretrained_weights=None):
             decoder_filters=(256, 128, 64, 32, 16),
             decoder_use_batchnorm=True,
         )
-        model = tf.keras.models.experimental.SharpnessAwareMinimization(
-            model, rho=0.05, num_batch_splits=None, name=None
-        )
+        # model = tf.keras.models.experimental.SharpnessAwareMinimization(
+        #     model, rho=0.05, num_batch_splits=None, name=None
+        # )
         opt = tf.optimizers.Adam(lr)
         model.compile(
             optimizer=opt,

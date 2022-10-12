@@ -209,6 +209,149 @@ def load_kmr_tfdata(
     n = len(list_ds)
     return (train_generator, n)
 
+# %%
+# * 3. Tf.data as input pipeline
+def load_kmr57_tfdata(
+    dataset_path,
+    batch_size=16,
+    wsi_ids=None,
+    cross_fold=None,
+    stains=["HE", "Mask"],
+    aug=False,
+    target_size=(256, 256),
+    seed=1,
+    cache=None,
+    shuffle_buffer_size=40000,
+    num_shards = 1
+) -> tuple:
+    def parse_image(file_path):
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
+
+        img = tf.io.decode_png(img, channels=3)
+
+        img = tf.image.convert_image_dtype(img, tf.float32)
+
+        img = tf.image.resize(img, [target_size[0], target_size[1]])
+        # resize the image to the desired size.
+        if aug:
+            img = augment(img)
+        return img
+    def parse_mask(file_path):
+        img = tf.io.read_file(file_path)
+        # convert the compressed string to a 3D uint8 tensor
+
+        img = tf.io.decode_png(img, channels=1)
+
+        img = tf.image.convert_image_dtype(img, tf.float32)
+
+        img = tf.image.resize(img, [target_size[0], target_size[1]])
+        # resize the image to the desired size.
+        if aug:
+            img = augment(img)
+        return img
+    def prepare_for_training(
+        ds, cache=cache, shuffle_buffer_size=shuffle_buffer_size, batch_size=batch_size
+    ):
+        if cache:
+            if isinstance(cache, str):
+                ds = ds.cache(cache)
+            else:
+                ds = ds.cache()
+        ds = ds.shuffle(
+            buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=False
+        )
+        # Repeat forever
+        ds = ds.repeat()
+        ds = ds.batch(batch_size)
+        # `prefetch` lets the dataset fetch batches in the background
+        # while the model is training.
+        ds = ds.prefetch(buffer_size=AUTOTUNE)
+        return ds
+
+    data_generator_tr,data_generator_val = {},{}
+    for staintype in stains:
+        if staintype != "Mask":
+
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(
+                    image, target_size[0] + 32, target_size[0] + 32
+                )
+                # Random crop back to the original size
+                image = tf.image.random_crop(
+                    image, size=[target_size[0], target_size[0], 3], seed=seed
+                )
+                image = tf.image.random_brightness(
+                    image, max_delta=0.01, seed=seed
+                )  # Random brightness
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
+
+        else:
+            # only the channels of input are different
+            def augment(image, seed=seed):
+                # Add 6 pixels of padding
+                image = tf.image.resize_with_crop_or_pad(
+                    image, target_size[0] + 32, target_size[0] + 32
+                )
+                # Random crop back to the original size
+                image = tf.image.random_crop(
+                    image, size=[target_size[0], target_size[0], 1], seed=seed
+                )
+
+                image = tf.image.random_flip_left_right(image, seed=seed)
+                image = tf.image.random_flip_up_down(image, seed=seed)
+                return image
+
+        dir_pattern = [
+            dataset_path
+            + "/"
+            + staintype
+            + "/*"
+            + wsi
+            + "*/"
+            for wsi in wsi_ids
+        ]
+
+        list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
+        # -------------- >>
+        # ⬇️ Horovod 的残留代码。在Tsubame的不同worker上，其rank不同。
+        # 因此，数据的不同部分被均分到各个节点
+        # -------------- 
+        # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
+        # -------------- <<
+
+        # list_ds = list_ds.shard(num_shards=num_shards, IndexError()=0)
+        print(len(list_ds))
+        list_ds_tr = list_ds.take(int(len(list_ds)*0.8))
+        list_ds_val = list_ds.skip(int(len(list_ds)*0.8))
+        print(list_ds_val)
+        AUTOTUNE = tf.data.experimental.AUTOTUNE
+        if staintype != "DAB" and staintype != "Mask":
+            labeled_ds_tr = list_ds_tr.map(parse_image, num_parallel_calls=AUTOTUNE)
+            labeled_ds_val = list_ds_val.map(parse_image, num_parallel_calls=AUTOTUNE)
+        else:
+            labeled_ds_tr = list_ds_tr.map(parse_mask, num_parallel_calls=AUTOTUNE)
+            labeled_ds_val = list_ds_val.map(parse_mask, num_parallel_calls=AUTOTUNE)
+        # 有问题。如果说shuffle的步骤在shard之后，那么shard的可能只有一个case
+        # 有在全局首先shuffle的方法吗？
+        data_generator_tr[staintype] = prepare_for_training(
+            labeled_ds_tr,
+            cache=(cache + "_%s_%d.tfcache" % (staintype, 1e10 * np.random.rand()))
+            if isinstance(cache, str)
+            else cache,
+        )
+        data_generator_val[staintype] = prepare_for_training(
+            labeled_ds_val,
+            cache=(cache + "_%s_%d.tfcache" % (staintype, 1e10 * np.random.rand()))
+            if isinstance(cache, str)
+            else cache,
+        )
+    train_generator = zip(data_generator_tr[stains[0]], data_generator_tr[stains[1]])
+    validation_generator = zip(data_generator_val[stains[0]], data_generator_val[stains[1]])
+    return ((train_generator, len(list_ds_tr)), (validation_generator, len(list_ds_val)))
 
 # %%
 # * 3. Tf.data as input pipeline
