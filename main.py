@@ -5,7 +5,9 @@ from data_kmr import *
 from utils import *
 from color_proc import *
 from tqdm import tqdm
-import segmentation_models as sm; sm.set_framework("tf.keras")
+import segmentation_models as sm
+
+sm.set_framework("tf.keras")
 
 
 from sklearn.metrics import (
@@ -16,40 +18,43 @@ from sklearn.metrics import (
 )
 
 
-trainGene_n, _ = load_kmr57_tfdata(
-    dataset_path=train_path,
-    batch_size=bs,
-    cross_fold=cross_fold[0],
-    wsi_ids=['7553','5425','3951','2189','3135','3315','4863','4565','2670','3006','3574','3597','3944','1508','0669','1115', '1295','2072','2204','3433','7144','1590','2400','6897','1963','2118','4013','4498','0003','2943','3525','2839','0790','1904','3235','2730','7883','3316','4640','0003','1883','2913','1559','2280','6018','2124','8132','2850'],
-    stains=["HE", "Mask"], #DAB, Mask, HE< IHC
-    aug=False,
-    target_size=target_size,
-    cache=False,
-    shuffle_buffer_size=5000,
-    seed=seed,
-    num_shards=1
-)
-valGene_n, _ = load_kmr57_tfdata(
-    dataset_path=train_path,
-    batch_size=bs,
-    cross_fold=cross_fold[0],
-    wsi_ids=['7015','1052','3768','5256','6747','8107','2502','7930','7885'],
-    stains=["HE", "Mask"], #DAB, Mask, HE< IHC
-    aug=False,
-    target_size=target_size,
-    cache=False,
-    shuffle_buffer_size=5000,
-    seed=seed,
-    num_shards=1
-)
-trainGene, n_train = trainGene_n
-valGene, n_val = valGene_n
+if not flag_test:
+    trainGene_n, valGene_n = load_kmr57_tfdata(
+        dataset_path=train_path,
+        batch_size=bs,
+        cross_fold=["*"],
+        wsi_ids=tr_ids,
+        # wsi_ids=['7015','1052','3768','5256','6747','8107','2502','7930','7885'],
+        # wsi_ids=['*'],
+        stains=["HE", "Mask"],  # DAB, Mask, HE< IHC
+        aug=False,
+        target_size=target_size,
+        cache=False,
+        shuffle_buffer_size=5000,
+        seed=seed,
+        num_shards=1,
+    )
+    valGene_n, _ = load_kmr57_tfdata(
+        dataset_path=train_path,
+        batch_size=bs,
+        cross_fold=["*"],
+        wsi_ids=val_ids,
+        stains=["HE", "Mask"],  # DAB, Mask, HE< IHC
+        aug=False,
+        target_size=target_size,
+        cache=False,
+        shuffle_buffer_size=5000,
+        seed=seed,
+        num_shards=1,
+    )
+    trainGene, n_train = trainGene_n
+    valGene, n_val = valGene_n
 
-print("NUM TRAIN:", n_train)
-step_num = n_train // bs
-# step_num=10 # for test
+    print("NUM TRAIN:", n_train)
+    step_num = n_train // bs
+    # step_num=10 # for test
 
-model_checkpoint = ModelCheckpoint(
+    model_checkpoint = ModelCheckpoint(
         model_path,
         monitor="loss",
         verbose=verbose,
@@ -59,58 +64,32 @@ model_checkpoint = ModelCheckpoint(
         save_freq=checkpoint_period * step_num,
     )
 
-file_writer = tf.summary.create_file_writer(logdir + "/metrics")
-file_writer.set_as_default()
-tensorboard_callback = TensorBoard(log_dir=logdir)
-callbacks = [model_checkpoint,tensorboard_callback]
+    file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+    file_writer.set_as_default()
+    tensorboard_callback = TensorBoard(log_dir=logdir)
+    callbacks = [model_checkpoint, tensorboard_callback]
 
-# model = deeplab(loss=loss_name, lr = lr, classes=3)
-model = smunet(loss=loss_name)
-# model = u_res50enc(loss=loss_name)
-# model = unet(loss=loss_name, 
-#  	pl=[16,32,64,128,256],
-#  	# pl=[256,128,64,32,16], # reverted
-#  	)
-# model = kumatt(loss=loss_name)
-
-
-
-if flag_continue:
-    start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_bs%s_ep%02d+%02d" % (
-        framework,
-        model_name,
-        data_name,
-        loss_name,
-        edge_size,
-        lrstr,
-        bs,
-        continue_step[0],
-        continue_step[1]
-    )
-    for layer in model.layers :
-        print(layer.name+" : input ("+str(layer.input_shape)+") output ("+str(layer.output_shape)+")")
-
-    print("__")
-    import h5py
-    with h5py.File(start_path, 'r') as f:
-        for k in f.keys():
-            for l in f[k].keys():
-                for m in f[k][l].keys():
-                    print(k+ " : " + m + " : " + str(f[k][l][m]))
-    model.load_weights(start_path, by_name=True)
-
-if not flag_test:
+    # model = deeplab(loss=loss_name, lr = lr, classes=3)
+    model = smunet(loss=loss_name)
+    # model = u_res50enc(loss=loss_name)
+    # model = unet(loss=loss_name,
+    #  	pl=[16,32,64,128,256],
+    #  	# pl=[256,128,64,32,16], # reverted
+    #  	)
+    # model = kumatt(loss=loss_name)
     training_history = model.fit(
         trainGene,
         validation_data=valGene,
         validation_freq=1,
-        validation_steps=n_val//bs_v,
-        steps_per_epoch=step_num*oversampling,
+        validation_steps=n_val // bs_v,
+        steps_per_epoch=step_num * oversampling,
         epochs=num_epoches,
         initial_epoch=initial_epoch,
         callbacks=callbacks,
     )
 else:
+    model = smunet(loss=loss_name)
+
     # ----------------------------------------------------------------------
     # 转换tfpb模型为h5
     # ----------------------------------------------------------------------
@@ -138,10 +117,10 @@ else:
     #         continue_step[0] + continue_step[1],
     #         k * checkpoint_period,
     #     ))
-        #model.evaluate(valGene, steps=n_val//bs_v)
-        # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
-        # kappa.update_state(y_true , y_pred)
-    for k in range(10, 10+1):
+    # model.evaluate(valGene, steps=n_val//bs_v)
+    # kappa = tfa.metrics.CohenKappa(num_classes=2, sparse_labels=True)
+    # kappa.update_state(y_true , y_pred)
+    for k in range(10, 10 + 1):
         # continue each model checkpoint
         start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
             framework,
@@ -212,8 +191,6 @@ else:
         # plt.savefig("/home/cunyuan/roc.png")
         # exit(0)
 
-        
-
         # ----------------------------------------------------------------------
         # 残留代码，决定最佳阈值
         # ----------------------------------------------------------------------
@@ -272,22 +249,27 @@ else:
             0,
         )
         avgiou = 0
-        for id_loocv_t in range(10):
+        for id_loocv_t in range(6):
             # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
             data_name_t = data_name
             # data_name_t = "kmr-imgnet-loocv%s"%id_loocv_t
             start_path = model_dir + "%s-%s__%s_%s_%d_lr%s_ep%02d+%02d.h5" % (
-                    framework,
-                    model_name,
-                    data_name_t,
-                    loss_name,
-                    edge_size,
-                    lrstr,
-                    # bs,
-                    continue_step[0] + continue_step[1],
-                    k,
-                )
-            start_path = model_dir+"hvd-tfk-dense121-unet__G123-57-PAD_bceja_256_lr1.00e-03_ep00+50.h5"
+                framework,
+                model_name,
+                data_name_t,
+                loss_name,
+                edge_size,
+                lrstr,
+                # bs,
+                continue_step[0] + continue_step[1],
+                k,
+            )
+            start_path = (
+                model_dir
+                + "hvd-tfk-dense121-unet__G123-57-cv%s_bceja_256_lr1.00e-03_ep00+50.h5"
+                % id_loocv_t
+            )
+            cvid = int(id_loocv_t*3)
             # model.build()
             # import h5py
             # with h5py.File(start_path, 'r') as f:
@@ -296,49 +278,34 @@ else:
             #             for m in f[k][l].keys():
             #                 print(k+ " : " + m + " : " + str(f[k][l][m]))
             # model.load_weights(start_path, by_name=True)
-            model.build(input_shape=(None, 256, 256, 3))
+            # model.build(input_shape=(None, 256, 256, 3))
             model.load_weights(start_path)
             print(start_path)
-            testGene, n_test = load_kmr_test(
-                                dataset_path=test_path,
-                                target_size=(2048, 2048),
-                                batch_size=1,
-                                cross_fold=cross_fold[1],
-                                wsi_ids=[foldmat[0, 2],],
-                                aug=False,
-                                cache=False,
-                                shuffle_buffer_size=128,
-                                seed=seed,
-                            )
+            testGene, n_test = glob_kmr_test(
+                dataset_path=test_path,
+                target_size=(2048, 2048),
+                batch_size=1,
+                cross_fold=None,
+                wsi_ids=fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3],
+                aug=False,
+                cache=False,
+                shuffle_buffer_size=128,
+                seed=seed,
+            )
             for kk, (tx, ty) in zip(range(n_test), testGene):
-                if data_name != "ALL":
-                    if kk< test_list[id_loocv_t][0]: continue
-                    if kk > test_list[id_loocv_t][1]: break
-            
-            # tn = ty
-            # (
-            #     num_tp,
-            #     num_tn,
-            #     num_pred,
-            #     num_npred,
-            #     num_positive,
-            #     num_negative,
-            #     iou,
-            #     res,
-            # ) = single_prediction(tx, ty, tn, model, None, 256)
-            # num_tp_ += num_tp
-            # num_tn_ += num_tn
-            # num_pred_ += num_pred
-            # num_npred_ += num_npred
-            # num_positive_ += num_positive
-            # num_negative_ += num_negative
-            # avgiou += iou
-            # plt.show()
-                res, hema_texture, mask = interactive_prediction(tx[0, :,:,:3], model)
+                # if data_name != "ALL":
+                ## For old eval code
+                #     if kk< test_list[id_loocv_t][0]: continue
+                #     if kk > test_list[id_loocv_t][1]: break
+                txl = tx
+                print(txl)
+                tx = cv.imread(tx)
+                tx = cv.cvtColor(tx, cv.COLOR_BGR2RGB)
+                tx = np.expand_dims(tx, 0) / 255.0
+                res, hema_texture, mask = interactive_prediction(tx[0, :, :, :3], model)
                 plt.imsave(
-                    "/raid/ji/DATA/KimuraLIpng/ihc_%d.png"
-                    % kk,
-                    res.reshape(2048, 2048, 3),
+                    "/wd_0/ji/DATA/2210-WSI57-LOCOCV/%s.png" % txl.rsplit("/", 1)[-1],
+                    res,
                 )
             # plt.imsave(
             #     "/home/cunyuan/resdenseunet/he_%d.png"

@@ -4,12 +4,16 @@ import tensorflow as tf
 from datetime import datetime
 import os
 import numpy as np
+
+# HOME_PATH = "/raid/ji/"
+# train_path = HOME_PATH + "/DATA/TILES_(256, 256)"
+# val_path = HOME_PATH + "/DATA/TILES_(256, 256)"
+# test_path = "/raid/ji/DATA" + "/KimuraLIpng/"
+
 HOME_PATH = "/wd_0/ji"
-# train_path = HOME_PATH + "/DATA/TILES_256(1 in 10)"
 train_path = HOME_PATH + "/TILES_PAD(256, 256)"
 val_path = HOME_PATH + "/TILES_PAD(256, 256)"
-# val_path = HOME_PATH + "/TILES_256(1 in 10)"
-test_path = "/raid/ji/DATA" + "/KimuraLIpng/"
+test_path = "/wd_0/ji/TILES_PAD/test/"
 
 model_dir = HOME_PATH + "/models57/"
 
@@ -22,7 +26,7 @@ test_size = (2048, 2048)
 
 # ------------------ 指定GPU资源 ---------------------
 devices = "0,1,2,3"
-# devices = ""
+devices = ""
 os.environ["CUDA_VISIBLE_DEVICES"] = devices
 DEVICES=[
 "/gpu:%s"%id for id in devices[::2]# ::2 skips puncs in device string
@@ -47,14 +51,14 @@ verbose = 1
 
 checkpoint_period = 5
 
-flag_test = 0
+flag_test = 1
 flag_multi_gpu = 0
 
 flag_continue = 0
 continue_step = (0, 0)  # start epoch, total epochs trained
 initial_epoch = continue_step[0] + continue_step[1]
 
-num_epoches = 101
+num_epoches = 51
 
 framework = "hvd-tfk"
 
@@ -64,8 +68,10 @@ model_name = "dense121-unet"
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
 id_loocv = 7
+cvid = 18
+
 # data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-data_name = "G123-57-PAD-lco"
+data_name = "G123-57-cv%s"%(cvid//3)
 # data_name = "loocv%s"%id_loocv
 # data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
 oversampling = 1
@@ -95,11 +101,13 @@ sing_group = [
 # sing = sing_group[id_loocv]
 #tr_ids = np.hstack([foldmat.ravel()[:id_loocv], foldmat.ravel()[id_loocv + 1 :]])
 # tr_ids = [foldmat.ravel()[sing[1]], foldmat.ravel()[sing[2]]]
-tr_ids=foldmat.ravel() # Mixed
+tr_ids= fold["G1"][:cvid] + fold["G2"][:cvid] + fold["G3"][:cvid] + \
+    fold["G1"][cvid+3:] + fold["G2"][cvid+3:] + fold["G3"][cvid+3:]
+    # Mixed
 
 #val_ids = [foldmat.ravel()[id_loocv]]
 # val_ids = [foldmat.ravel()[sing[0]]]
-val_ids = foldmat.ravel()
+val_ids = fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3]
 print(tr_ids)
 print(val_ids)
 

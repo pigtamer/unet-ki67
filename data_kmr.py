@@ -258,9 +258,9 @@ def load_kmr57_tfdata(
                 ds = ds.cache(cache)
             else:
                 ds = ds.cache()
-        ds = ds.shuffle(
-            buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=False
-        )
+        # ds = ds.shuffle(
+        #     buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=False
+        # )
         # Repeat forever
         ds = ds.repeat()
         ds = ds.batch(batch_size)
@@ -314,6 +314,20 @@ def load_kmr57_tfdata(
             + "*/"
             for wsi in wsi_ids
         ]
+        
+        # dir_pattern = [            
+        #     dataset_path
+        #     + "/"            
+        #     + staintype
+        #     + "/"
+        #     + "*"
+        #     + wsi
+        #     + "*/Tiles/Tumor/"
+        #     + foldnum
+        #     + "/*"
+        #     for wsi in wsi_ids
+        #     for foldnum in cross_fold
+        #     ]
 
         list_ds = tf.data.Dataset.list_files(dir_pattern, shuffle=True, seed=seed)
         # -------------- >>
@@ -322,11 +336,11 @@ def load_kmr57_tfdata(
         # -------------- 
         # list_ds = list_ds.shard(num_shards=hvd.size(), index=hvd.rank())
         # -------------- <<
-
-        # list_ds = list_ds.shard(num_shards=num_shards, IndexError()=0)
+        print(list_ds)
+        list_ds = list_ds.shard(num_shards=num_shards, index=0)
         print(len(list_ds))
-        list_ds_tr = list_ds.take(int(len(list_ds)*0.8))
-        list_ds_val = list_ds.skip(int(len(list_ds)*0.8))
+        list_ds_tr = list_ds.take(int(len(list_ds)*0.9))
+        list_ds_val = list_ds.skip(int(len(list_ds)*0.9))
         print(list_ds_val)
         AUTOTUNE = tf.data.experimental.AUTOTUNE
         if staintype != "DAB" and staintype != "Mask":
@@ -432,6 +446,43 @@ def load_kmr_test(
             if isinstance(cache, str)
             else cache,
         )
+    train_generator = zip(
+        data_generator["HE"],
+        data_generator["IHC"],
+    )
+    n = len(list_ds)
+    return (train_generator, n)
+
+#%%
+# * 3. Tf.data as input pipeline
+def glob_kmr_test(
+    dataset_path,
+    batch_size=1,
+    wsi_ids=None,
+    cross_fold=None,
+    stains=["HE", "IHC"],
+    aug=False,
+    target_size=(2048, 2048),
+    seed=1,
+    cache=None,
+    shuffle_buffer_size=128,
+) -> tuple:
+    data_generator = {}
+    for staintype in stains:
+        dir_pattern = [
+            dataset_path
+            + "/"            
+            + staintype
+            + "/*"
+            + wsi
+            +"*"
+            for wsi in wsi_ids
+        ]
+        list_ds = []
+        for pattern in dir_pattern:
+            list_ds += glob.glob(pattern)
+        # print(list_ds)
+        data_generator[staintype] = sorted(list_ds)
     train_generator = zip(
         data_generator["HE"],
         data_generator["IHC"],
