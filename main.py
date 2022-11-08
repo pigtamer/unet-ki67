@@ -34,19 +34,20 @@ if not flag_test:
         seed=seed,
         num_shards=1,
     )
-    valGene_n, _ = load_kmr57_tfdata(
-        dataset_path=train_path,
-        batch_size=bs,
-        cross_fold=["*"],
-        wsi_ids=val_ids,
-        stains=["HE", "Mask"],  # DAB, Mask, HE< IHC
-        aug=False,
-        target_size=target_size,
-        cache=False,
-        shuffle_buffer_size=5000,
-        seed=seed,
-        num_shards=1,
-    )
+    if not ("ALL" in data_name):
+        valGene_n, _ = load_kmr57_tfdata(
+            dataset_path=train_path,
+            batch_size=bs,
+            cross_fold=["*"],
+            wsi_ids=val_ids,
+            stains=["HE", "Mask"],  # DAB, Mask, HE< IHC
+            aug=False,
+            target_size=target_size,
+            cache=False,
+            shuffle_buffer_size=5000,  
+            seed=seed,
+            num_shards=1,
+        )
     trainGene, n_train = trainGene_n
     valGene, n_val = valGene_n
 
@@ -61,7 +62,7 @@ if not flag_test:
         save_best_only=False,
         save_weights_only=True,
         mode="auto",
-        save_freq=checkpoint_period * step_num,
+        save_freq=checkpoint_period * step_num * oversampling,
     )
 
     file_writer = tf.summary.create_file_writer(logdir + "/metrics")
@@ -249,7 +250,7 @@ else:
             0,
         )
         avgiou = 0
-        for id_loocv_t in range(6):
+        for id_loocv_t in range(18):
             # data_name_t = "kmr-imgnet-loocv%s-noaug"%id_loocv_t
             data_name_t = data_name
             # data_name_t = "kmr-imgnet-loocv%s"%id_loocv_t
@@ -265,11 +266,17 @@ else:
                 k,
             )
             start_path = (
-                model_dir
-                + "hvd-tfk-dense121-unet__G123-57-cv%s_bceja_256_lr1.00e-03_ep00+50.h5"
+                "/wd_0/ji/_MODELS/fcv/"
+                + "hvd-tfk-dense121-unet__G123-57-cv%s_bceja_256_lr1.00e-03_ep00+10.h5"
                 % id_loocv_t
             )
-            cvid = int(id_loocv_t*3)
+            start_path = (
+                model_dir
+                + "hvd-tfk-dense121-unet__G123-57-sing%s_bceja_256_lr1.00e-03_ep00+10.h5"
+                % id_loocv_t
+            )
+            # cvid = int(id_loocv_t*3)
+            cvid = int(id_loocv_t)
             # model.build()
             # import h5py
             # with h5py.File(start_path, 'r') as f:
@@ -281,12 +288,31 @@ else:
             # model.build(input_shape=(None, 256, 256, 3))
             model.load_weights(start_path)
             print(start_path)
+            
+            sing = sing_group[cvid % 6]
+
+            if "sing" in data_name:
+                tr_ids = list(foldmat[cvid // 6][:3*sing[0]]) + list(foldmat[cvid // 6][3*(sing[0]+1):])
+                val_ids = foldmat[cvid // 6][3*sing[0]:3*(sing[0]+1)]
+                if cvid%6 == 5:
+                    tr_ids = list(foldmat[cvid // 6][:3*sing[0]])
+                    val_ids = foldmat[cvid // 6][3*sing[0]:]
+            elif "cv" in data_name:
+                tr_ids= fold["G1"][:cvid] + fold["G2"][:cvid] + fold["G3"][:cvid] + fold["G1"][cvid+3:] + fold["G2"][cvid+3:] + fold["G3"][cvid+3:]
+                val_ids = fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3]
+                if cvid//3 == 5:
+                    tr_ids = fold["G1"][:cvid] + fold["G2"][:cvid] + fold["G3"][:cvid]
+                    val_ids = fold["G1"][cvid:] + fold["G2"][cvid:] + fold["G3"][cvid:]
+            elif "ALL" in data_name:
+                tr_ids = ["*"]
+                val_ids = ["*"]
             testGene, n_test = glob_kmr_test(
                 dataset_path=test_path,
                 target_size=(2048, 2048),
                 batch_size=1,
                 cross_fold=None,
-                wsi_ids=fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3],
+                # wsi_ids=fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3],
+                wsi_ids = val_ids,
                 aug=False,
                 cache=False,
                 shuffle_buffer_size=128,
@@ -304,7 +330,7 @@ else:
                 tx = np.expand_dims(tx, 0) / 255.0
                 res, hema_texture, mask = interactive_prediction(tx[0, :, :, :3], model)
                 plt.imsave(
-                    "/wd_0/ji/DATA/2210-WSI57-LOCOCV/%s.png" % txl.rsplit("/", 1)[-1],
+                    "/wd_0/ji/DATA/2210-WSI57-SING/%s.png" % txl.rsplit("/", 1)[-1],
                     res,
                 )
             # plt.imsave(

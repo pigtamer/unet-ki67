@@ -26,7 +26,7 @@ test_size = (2048, 2048)
 
 # ------------------ 指定GPU资源 ---------------------
 devices = "0,1,2,3"
-devices = ""
+devices = "0"
 os.environ["CUDA_VISIBLE_DEVICES"] = devices
 DEVICES=[
 "/gpu:%s"%id for id in devices[::2]# ::2 skips puncs in device string
@@ -67,13 +67,10 @@ model_name = "dense121-unet"
 
 loss_name = "bceja"  # focalja, bce, bceja, ja, dice...
 
-id_loocv = 7
-cvid = 18
+cvid = 9
 
-# data_name = "kmr-imgnet-loocv%s-noaug"%id_loocv
-data_name = "G123-57-cv%s"%(cvid//3)
-# data_name = "loocv%s"%id_loocv
-# data_name = "lrx16valall_kmr-imgnet-sing%s"%id_loocv
+data_name = "G123-57-sing%s"%(cvid)
+# data_name = "G123-57-cv%s"%(cvid//3)
 oversampling = 1
 # FIXED_STEPS = 1600
 
@@ -81,33 +78,61 @@ test_list=[[6, 11], [12, 17], [0,5], [24, 29], [30, 34], [47, 52], [35, 40], [18
 
 cross_fold = [["001", "002", "003", "004", "006", "007", "008", "009"], ["005", "010"]]
 
-fold = {'G1': ['7015','1052','3768','7553','5425','3951','2189','3135','3315','4863','4565','2670','3006','3574','3597','3944','1508','0669','1115'],
-'G2': ['5256','6747','8107','1295','2072','2204','3433','7144','1590','2400','6897','1963','2118','4013','4498','0003','2943','3525','2839'],
-'G3': ['2502','7930','7885','0790','1904','3235','2730','7883','3316','4640','0003','1883','2913','1559','2280','6018','2124','8132','2850']}
+fold = {'G1': ['7015','1052','3768',
+'7553','5425','3951',
+'2189','3135','3315',
+'4863','4565','2670',
+'3006','3574','3597',
+'3944','1508','0669','1115'],
+'G2': ['5256','6747','8107',
+'1295','2072','2204',
+'3433','7144','1590',
+'2400','6897','1963',
+'2118','4013','4498',
+'0003','2943','3525','2839'],
+'G3': ['2502','7930','7885',
+'0790','1904','3235',
+'2730','7883','3316',
+'4640','0003','1883',
+'2913','1559','2280',
+'6018','2124','8132','2850']}
+for kf in fold.keys():
+    for kk in range(len((fold[kf]))):
+        fold[kf][kk] = kf+"_"+fold[kf][kk]
 foldmat = np.vstack([fold[key] for key in fold.keys()])
 
-sing_group = [
-    [0, 1, 2],
-    [1, 2, 0],
-    [2, 0, 1],
-    [3, 4, 5],
-    [4, 5, 3],
-    [5, 3, 4],
-    [6, 7, 8],
-    [7, 8, 6],
-    [8, 6, 7],
-]
+def permute_sing(idx):
+    l = np.arange(idx)
+    sing_group = [list(l)]
+    for k in range(idx):
+        l1 = np.zeros(len(l))
+        l1[:-1] = l[1:]
+        l1[-1] = l[0]
+        l = l1.astype(int)
+        sing_group.append(list(l))
+    return sing_group
 
-# sing = sing_group[id_loocv]
-#tr_ids = np.hstack([foldmat.ravel()[:id_loocv], foldmat.ravel()[id_loocv + 1 :]])
-# tr_ids = [foldmat.ravel()[sing[1]], foldmat.ravel()[sing[2]]]
-tr_ids= fold["G1"][:cvid] + fold["G2"][:cvid] + fold["G3"][:cvid] + \
-    fold["G1"][cvid+3:] + fold["G2"][cvid+3:] + fold["G3"][cvid+3:]
-    # Mixed
+sing_group = permute_sing(6)
+sing = sing_group[cvid % 6]
 
-#val_ids = [foldmat.ravel()[id_loocv]]
-# val_ids = [foldmat.ravel()[sing[0]]]
-val_ids = fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3]
+if "sing" in data_name:
+    tr_ids = list(foldmat[cvid // 6][:3*sing[0]]) + list(foldmat[cvid // 6][3*(sing[0]+1):])
+    val_ids = foldmat[cvid // 6][3*sing[0]:3*(sing[0]+1)]
+    if cvid%6 == 5:
+        tr_ids = list(foldmat[cvid // 6][:3*sing[0]])
+        val_ids = foldmat[cvid // 6][3*sing[0]:]
+elif "cv" in data_name:
+    tr_ids= fold["G1"][:cvid] + fold["G2"][:cvid] + fold["G3"][:cvid] + fold["G1"][cvid+3:] + fold["G2"][cvid+3:] + fold["G3"][cvid+3:]
+    val_ids = fold["G1"][cvid:cvid+3] + fold["G2"][cvid:cvid+3] + fold["G3"][cvid:cvid+3]
+    if cvid//3 == 5:
+        tr_ids = fold["G1"][:cvid] + fold["G2"][:cvid] + fold["G3"][:cvid]
+        val_ids = fold["G1"][cvid:] + fold["G2"][cvid:] + fold["G3"][cvid:]
+elif "ALL" in data_name:
+    tr_ids = ["*"]
+    val_ids = ["*"]
+
+tr_ids = list(tr_ids)
+val_ids = list(val_ids)
 print(tr_ids)
 print(val_ids)
 
